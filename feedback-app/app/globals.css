@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  background: #f4f4f4;
+  color: var(--foreground);
+  font-family: "IBM Plex Sans", sans-serif;
+  margin: 0;
+}
