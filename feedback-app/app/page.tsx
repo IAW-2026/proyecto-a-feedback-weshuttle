@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma"
-
+//s
 async function getReviews() {
   try {
     const reviews = await prisma.review.findMany()
