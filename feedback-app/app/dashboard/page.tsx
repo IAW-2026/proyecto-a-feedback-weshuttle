@@ -1,6 +1,12 @@
+import { prisma } from "../../lib/prisma"
+
 async function getReviews() {
-  const res = await fetch("http://localhost:3000/api/reviews")
-  return res.json()
+  try {
+    return await prisma.review.findMany()
+  } catch (error) {
+    console.error(error)
+    return []
+  }
 }
 
 export default async function Dashboard() {

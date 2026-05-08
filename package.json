@@ -1,0 +1,11 @@
+{
+  "name": "proyecto-a-feedback-weshuttle",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix feedback-app run dev",
+    "build": "npm --prefix feedback-app run build",
+    "start": "npm --prefix feedback-app run start",
+    "lint": "npm --prefix feedback-app run lint",
+    "vercel-build": "npm --prefix feedback-app ci && npm --prefix feedback-app run build"
+  }
+}

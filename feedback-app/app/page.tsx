@@ -1,17 +1,9 @@
+import { prisma } from "../lib/prisma"
+
 async function getReviews() {
   try {
-    // usar una variable de entorno para la URL base en producción
-
-    const res = await fetch("http://localhost:3000/api/reviews", {
-      cache: "no-store",
-    })
-
-    if (!res.ok) {
-      return []
-    }
-
-    return res.json()
-
+    const reviews = await prisma.review.findMany()
+    return reviews
   } catch (error) {
     console.error(error)
     return []
