@@ -25,3 +25,4 @@ export default function RootLayout({
     </ClerkProvider>
   )
 }
+//para usar los hooks de Clerk, debemos envolver nuestra aplicacion con el componente ClerkProvider, que se encuentra en @clerk/nextjs. Esto nos permite usar los hooks de Clerk en toda la aplicacion, sin tener que envolver cada componente con el componente ClerkProvider.
