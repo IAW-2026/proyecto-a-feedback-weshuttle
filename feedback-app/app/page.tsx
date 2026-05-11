@@ -1,5 +1,8 @@
 import { prisma } from "../lib/prisma"
-//s
+import Navbar from "./components/NavBar"
+import { auth } from "@clerk/nextjs/server"
+import { redirect } from "next/navigation"
+
 async function getReviews() {
   try {
     const reviews = await prisma.review.findMany()
@@ -10,6 +13,11 @@ async function getReviews() {
   }
 }
 export default async function Home() {
+  const { userId } = await auth()
+  // si no hay userId, redirigimos a la pagina de sign-in
+  if (!userId) {
+    redirect("/sign-in")
+  }
 
   const reviews = await getReviews()
 
@@ -54,11 +62,7 @@ export default async function Home() {
             WeShuttle
           </h1>
 
-          <button className="p-2 hover:bg-gray-100 rounded">
-            <span className="material-symbols-outlined">
-              notifications
-            </span>
-          </button>
+          <Navbar />
         </header>
 
         {/* CONTENT */}
