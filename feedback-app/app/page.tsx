@@ -125,16 +125,30 @@ export default async function Home() {
                           </p>
                         </div>
 
-                        <div className="flex text-green-600 text-xl">
-                          {review.calificacion
-                            ? "★".repeat(review.calificacion)
-                            : "Pending"}
+                        <div className="flex text-xl font-semibold">
+
+                          {review.estado_reseña === "PENDING"
+                            ? (
+                              <span className="text-yellow-600">
+                                Pending Review
+                              </span>
+                            )
+                            : (
+                              <span className="text-green-600">
+                                {"★".repeat(review.calificacion)}
+                              </span>
+                            )
+                          }
+
                         </div>
 
                       </div>
 
                       <p className="text-gray-700">
-                        {review.comentario || "Pending review completion"}
+                        {review.estado_reseña === "PENDING"
+                          ? "Waiting for feedback submission..."
+                          : review.comentario
+                        }
                       </p>
 
                       <p className="text-xs text-gray-400 mt-4">

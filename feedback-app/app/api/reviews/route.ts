@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       calificacion: body.calificacion,
       comentario: body.comentario,
 
-      estado_reseña: "PENDING",
+      estado_reseña: "COMPLETED",
     },
   })
 
