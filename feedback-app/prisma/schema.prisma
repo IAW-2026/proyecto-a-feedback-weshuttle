@@ -7,10 +7,23 @@ datasource db {
 }
 
 model Review {
-  id          String   @id @default(cuid())
-  rating      Int
-  comment     String
-  driverId    String
-  passengerId String
-  createdAt   DateTime @default(now())
+  id                  String         @id @default(cuid())
+
+  pool_id             String
+
+  autor_id            String
+  destinatario_id     String
+
+  calificacion        Int?
+  comentario          String?
+
+  estado_reseña       EstadoReseña  @default(PENDING)
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+enum EstadoReseña {
+  PENDING
+  COMPLETED
 }

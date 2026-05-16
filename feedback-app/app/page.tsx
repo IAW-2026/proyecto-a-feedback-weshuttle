@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma"
 import Navbar from "./components/NavBar"
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
+import CreateReviewForm from "./components/CreateReviewForm"
 
 async function getReviews() {
   try {
@@ -94,50 +95,7 @@ export default async function Home() {
                     Report an Issue
                   </h2>
 
-                  <form className="space-y-4">
-
-                    <div>
-                      <label className="block text-sm text-gray-500 mb-2">
-                        Category
-                      </label>
-
-                      <select className="w-full border border-gray-300 p-3">
-                        <option>Select an issue type</option>
-                        <option>Ride Experience</option>
-                        <option>Driver Behavior</option>
-                        <option>App Functionality</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm text-gray-500 mb-2">
-                        Trip Reference
-                      </label>
-
-                      <input
-                        type="text"
-                        placeholder="e.g. WSH-8842"
-                        className="w-full border border-gray-300 p-3"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm text-gray-500 mb-2">
-                        Details
-                      </label>
-
-                      <textarea
-                        rows={4}
-                        className="w-full border border-gray-300 p-3"
-                        placeholder="Please describe what happened..."
-                      />
-                    </div>
-
-                    <button className="w-full bg-blue-600 text-white p-3 font-semibold hover:bg-blue-700">
-                      Submit Ticket
-                    </button>
-
-                  </form>
+                  <CreateReviewForm />
 
                 </div>
 
@@ -163,22 +121,24 @@ export default async function Home() {
                           </h3>
 
                           <p className="text-sm text-gray-500">
-                            Driver: {review.driverId}
+                            Usuario: {review.destinatario_id}
                           </p>
                         </div>
 
                         <div className="flex text-green-600 text-xl">
-                          {"★".repeat(review.rating)}
+                          {review.calificacion
+                            ? "★".repeat(review.calificacion)
+                            : "Pending"}
                         </div>
 
                       </div>
 
                       <p className="text-gray-700">
-                        {review.comment}
+                        {review.comentario || "Pending review completion"}
                       </p>
 
                       <p className="text-xs text-gray-400 mt-4">
-                        Passenger: {review.passengerId}
+                        Passenger: {review.autor_id} | Status: {review.estado_reseña}
                       </p>
 
                     </div>

@@ -11,10 +11,15 @@ export async function POST(req: Request) {
 
   const review = await prisma.review.create({
     data: {
-      rating: body.rating,
-      comment: body.comment,
-      driverId: body.driverId,
-      passengerId: body.passengerId,
+      pool_id: body.pool_id,
+
+      autor_id: body.autor_id,
+      destinatario_id: body.destinatario_id,
+
+      calificacion: body.calificacion,
+      comentario: body.comentario,
+
+      estado_reseña: "PENDING",
     },
   })
 
