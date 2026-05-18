@@ -17,13 +17,14 @@ model Review {
   calificacion        Int?
   comentario          String?
 
-  estado_reseña       EstadoReseña  @default(PENDING)
+  estado_reseña       EstadoReseña  @default(PRECREATED)
 
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 }
 
 enum EstadoReseña {
+  PRECREATED
   PENDING
   COMPLETED
 }
