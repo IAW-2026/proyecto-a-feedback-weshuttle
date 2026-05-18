@@ -2,7 +2,8 @@ import { prisma } from "../lib/prisma"
 import Navbar from "./components/NavBar"
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
-import CreateReviewForm from "./components/CreateReviewForm"
+import PrecreateButton from "./components/PrecreateButton"
+import CompleteReviewForm from "./components/CompleteReviewForm"
 
 async function getReviews() {
   try {
@@ -13,8 +14,11 @@ async function getReviews() {
     return []
   }
 }
+
 export default async function Home() {
+
   const { userId } = await auth()
+
   // si no hay userId, redirigimos a la pagina de sign-in
   if (!userId) {
     redirect("/sign-in")
@@ -29,11 +33,13 @@ export default async function Home() {
       <aside className="hidden md:flex flex-col h-full w-80 fixed left-0 top-0 z-50 border-r border-gray-300 bg-white p-4">
 
         <div className="flex flex-col gap-2 mb-8 mt-4 px-1">
+
           <div className="text-2xl font-black text-blue-600 mb-6">
             WeShuttle
           </div>
 
           <div className="flex items-center gap-4">
+
             <img
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuBb9Z2QkkuSU0m1LAay3tpb_iZRvn1f2WCamjPjY8P8RrNRL_i-LjhfKIF8jT0eCmsyn98usB_8YIDpVe8BbwkPUQg5xCWv3qxlfHBZuEuEo9u2Wb-bDTXL21RCZl9hAiwgx7tpGlUihhrutAuMetKoKVvsSQ1-WSC3Wu5V_QEL0NvjfHXe0qqPY05IA-bZFXSNr6A5XRILQNFT12MQb7Sq-bEhMaG2pWVYgVG3Or9KHjZQ0WwpvvZS4iQd7QXWk832Y6j64vWMAss"
               alt="avatar"
@@ -46,10 +52,12 @@ export default async function Home() {
               </h2>
 
               <p className="text-sm text-gray-500">
-                Passenger Account
+                Sistema de Feedback
               </p>
             </div>
+
           </div>
+
         </div>
 
       </aside>
@@ -59,11 +67,13 @@ export default async function Home() {
 
         {/* TOPBAR */}
         <header className="flex justify-between items-center w-full px-5 h-16 bg-white border-b border-gray-300">
+
           <h1 className="text-xl font-bold text-blue-600">
             WeShuttle
           </h1>
 
           <Navbar />
+
         </header>
 
         {/* CONTENT */}
@@ -73,6 +83,7 @@ export default async function Home() {
 
             {/* PAGE HEADER */}
             <div className="mb-8">
+
               <h1 className="text-5xl font-extrabold mb-2">
                 Feedback & Support
               </h1>
@@ -80,6 +91,7 @@ export default async function Home() {
               <p className="text-gray-600 text-lg">
                 Manage your reviews or let us know how we can improve your journey.
               </p>
+
             </div>
 
             {/* GRID */}
@@ -88,14 +100,14 @@ export default async function Home() {
               {/* LEFT COLUMN */}
               <div className="lg:col-span-5">
 
-                {/* SUPPORT FORM */}
                 <div className="bg-white p-6 border border-gray-300">
 
                   <h2 className="text-2xl font-bold mb-6">
-                    Report an Issue
+                    Simulación de Viaje
                   </h2>
 
-                  <CreateReviewForm />
+                  {/* Botón temporal de testing */}
+                  <PrecreateButton />
 
                 </div>
 
@@ -116,6 +128,7 @@ export default async function Home() {
                       <div className="flex justify-between items-start mb-4">
 
                         <div>
+
                           <h3 className="font-bold text-lg">
                             Ride Feedback
                           </h3>
@@ -123,36 +136,41 @@ export default async function Home() {
                           <p className="text-sm text-gray-500">
                             Usuario: {review.destinatario_id}
                           </p>
-                        </div>
-
-                        <div className="flex text-xl font-semibold">
-
-                          {review.estado_reseña === "PENDING"
-                            ? (
-                              <span className="text-yellow-600">
-                                Pending Review
-                              </span>
-                            )
-                            : (
-                              <span className="text-green-600">
-                                {"★".repeat(review.calificacion)}
-                              </span>
-                            )
-                          }
 
                         </div>
 
                       </div>
 
-                      <p className="text-gray-700">
-                        {review.estado_reseña === "PENDING"
-                          ? "Waiting for feedback submission..."
-                          : review.comentario
-                        }
-                      </p>
+                      {review.estado_reseña === "PRECREATED" ? (
+
+                        <div className="mt-4">
+
+                          <p className="text-yellow-600 font-semibold mb-4">
+                            Reseña disponible para completar
+                          </p>
+
+                          <CompleteReviewForm reviewId={review.id} />
+
+                        </div>
+
+                      ) : (
+
+                        <>
+
+                          <div className="flex text-xl font-semibold text-green-600 mb-4">
+                            {"★".repeat(review.calificacion || 0)}
+                          </div>
+
+                          <p className="text-gray-700">
+                            {review.comentario}
+                          </p>
+
+                        </>
+
+                      )}
 
                       <p className="text-xs text-gray-400 mt-4">
-                        Passenger: {review.autor_id} | Status: {review.estado_reseña}
+                        Autor: {review.autor_id} | Estado: {review.estado_reseña}
                       </p>
 
                     </div>
@@ -170,6 +188,7 @@ export default async function Home() {
         </main>
 
       </div>
+
     </div>
   )
 }

@@ -1,4 +1,5 @@
 // --> POST /reviews/precreate
+
 import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request) {
@@ -10,6 +11,27 @@ export async function POST(req: Request) {
     driver_user_id,
     started_at,
   } = body
+
+  // Validamos si ya existen reviews para este pool
+  const existingReviews = await prisma.review.findFirst({
+    where: {
+      pool_id,
+    },
+  })
+
+  // Si ya existen, devolvemos 409
+  if (existingReviews) {
+
+    return Response.json(
+      {
+        error: "Las reviews ya fueron precreadas para este pool",
+      },
+
+      {
+        status: 409,
+      }
+    )
+  }
 
   // MOCK TEMPORAL
   // despues esto viene de Rider App
