@@ -24,9 +24,21 @@ export default function PrecreateButton() {
   return (
     <button
       onClick={handleClick}
-      className="w-full bg-blue-600 text-white p-3 font-semibold hover:bg-blue-700"
+      className="
+      w-full
+      h-14
+      rounded-full
+      bg-blue-600
+      text-white
+      font-medium
+      text-[15px]
+      hover:bg-blue-700
+      transition-all
+      duration-200
+      cursor-pointer
+      "
     >
-      Simular inicio de viaje
+      Start simulated ride
     </button>
   )
 }

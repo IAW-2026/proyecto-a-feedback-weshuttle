@@ -34,15 +34,16 @@ export default function CompleteReviewForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
 
       <div>
-        <label className="block text-sm text-gray-500 mb-2">
-          Calificación
-        </label>
+
+        <p className="text-sm text-neutral-500 mb-4">
+          Rate your trip
+        </p>
 
         <div
-          className="flex gap-1 text-4xl"
+          className="flex gap-2 text-5xl"
           onMouseLeave={() => setHoveredStar(0)}
         >
 
@@ -57,11 +58,17 @@ export default function CompleteReviewForm({
                 type="button"
                 onMouseEnter={() => setHoveredStar(star)}
                 onClick={() => setCalificacion(star)}
-                className={`cursor-pointer transition-colors duration-150 ${
-                  activeStar
-                    ? "text-green-600"
-                    : "text-gray-300"
-                }`}
+                className={`
+                  transition-all
+                  duration-150
+                  hover:scale-110
+                  cursor-pointer
+                  ${
+                    activeStar
+                      ? "text-green-600"
+                      : "text-neutral-300"
+                  }
+                `}
               >
                 ★
               </button>
@@ -69,22 +76,47 @@ export default function CompleteReviewForm({
           })}
 
         </div>
+
       </div>
 
       <div>
-        <label className="block text-sm text-gray-500 mb-2">
-          Comentario
-        </label>
 
         <textarea
           value={comentario}
           onChange={(e) => setComentario(e.target.value)}
-          className="w-full border border-gray-300 p-3"
+          placeholder="Tell us about your experience..."
+          className="
+          w-full
+          min-h-[140px]
+          rounded-[24px]
+          bg-[#f6f6f6]
+          px-5
+          py-4
+          outline-none
+          resize-none
+          text-[15px]
+          placeholder:text-neutral-400
+          "
         />
+
       </div>
 
-      <button className="w-full bg-blue-600 text-white p-3 font-semibold hover:bg-blue-700">
-        Completar Review
+      <button
+        className="
+        w-full
+        h-14
+        rounded-full
+        bg-blue-600
+        text-white
+        font-medium
+        text-[15px]
+        hover:bg-blue-700
+        transition-all
+        duration-200
+        cursor-pointer
+        "
+      >
+        Enviar Feedback
       </button>
 
     </form>

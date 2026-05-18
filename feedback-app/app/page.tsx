@@ -7,7 +7,12 @@ import CompleteReviewForm from "./components/CompleteReviewForm"
 
 async function getReviews() {
   try {
-    const reviews = await prisma.review.findMany()
+    const reviews = await prisma.review.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    })
+
     return reviews
   } catch (error) {
     console.error(error)
@@ -16,10 +21,8 @@ async function getReviews() {
 }
 
 export default async function Home() {
-
   const { userId } = await auth()
 
-  // si no hay userId, redirigimos a la pagina de sign-in
   if (!userId) {
     redirect("/sign-in")
   }
@@ -27,167 +30,148 @@ export default async function Home() {
   const reviews = await getReviews()
 
   return (
-    <div className="bg-gray-100 text-gray-900 flex h-screen overflow-hidden antialiased">
+    <div className="min-h-screen bg-[#f6f6f6] text-black">
 
-      {/* SIDEBAR */}
-      <aside className="hidden md:flex flex-col h-full w-80 fixed left-0 top-0 z-50 border-r border-gray-300 bg-white p-4">
+      <Navbar />
 
-        <div className="flex flex-col gap-2 mb-8 mt-4 px-1">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-          <div className="text-2xl font-black text-blue-600 mb-6">
-            WeShuttle
-          </div>
+        {/* HERO */}
+        <section className="mb-14">
 
-          <div className="flex items-center gap-4">
+          <p className="text-sm text-neutral-500 mb-4">
+            WeShuttle Feedback System
+          </p>
 
-            <img
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBb9Z2QkkuSU0m1LAay3tpb_iZRvn1f2WCamjPjY8P8RrNRL_i-LjhfKIF8jT0eCmsyn98usB_8YIDpVe8BbwkPUQg5xCWv3qxlfHBZuEuEo9u2Wb-bDTXL21RCZl9hAiwgx7tpGlUihhrutAuMetKoKVvsSQ1-WSC3Wu5V_QEL0NvjfHXe0qqPY05IA-bZFXSNr6A5XRILQNFT12MQb7Sq-bEhMaG2pWVYgVG3Or9KHjZQ0WwpvvZS4iQd7QXWk832Y6j64vWMAss"
-              alt="avatar"
-              className="w-12 h-12 rounded-full object-cover"
-            />
-
-            <div>
-              <h2 className="text-base font-semibold">
-                Welcome back
-              </h2>
-
-              <p className="text-sm text-gray-500">
-                Sistema de Feedback
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-
-      </aside>
-
-      {/* MAIN */}
-      <div className="flex-1 flex flex-col md:ml-80 h-full overflow-hidden">
-
-        {/* TOPBAR */}
-        <header className="flex justify-between items-center w-full px-5 h-16 bg-white border-b border-gray-300">
-
-          <h1 className="text-xl font-bold text-blue-600">
-            WeShuttle
+          <h1 className="text-5xl sm:text-6xl font-black tracking-tight max-w-3xl leading-[0.95] mb-6">
+            Your ride experience matters.
           </h1>
 
-          <Navbar />
+          <p className="text-lg text-neutral-600 max-w-xl leading-relaxed">
+            Help improve every trip with fast and simple ride feedback.
+          </p>
 
-        </header>
+        </section>
 
-        {/* CONTENT */}
-        <main className="flex-1 overflow-y-auto p-8">
+        {/* MAIN GRID */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          <div className="max-w-7xl mx-auto">
+          {/* LEFT */}
+          <div className="lg:col-span-5">
 
-            {/* PAGE HEADER */}
-            <div className="mb-8">
+            <div className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
 
-              <h1 className="text-5xl font-extrabold mb-2">
-                Feedback & Support
-              </h1>
+              <div className="mb-8">
 
-              <p className="text-gray-600 text-lg">
-                Manage your reviews or let us know how we can improve your journey.
-              </p>
+                <p className="text-sm text-neutral-500 mb-3">
+                  Simulated Trip
+                </p>
 
-            </div>
+                <h2 className="text-3xl font-black tracking-tight mb-3">
+                  Start a ride
+                </h2>
 
-            {/* GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-              {/* LEFT COLUMN */}
-              <div className="lg:col-span-5">
-
-                <div className="bg-white p-6 border border-gray-300">
-
-                  <h2 className="text-2xl font-bold mb-6">
-                    Simulación de Viaje
-                  </h2>
-
-                  {/* Botón temporal de testing */}
-                  <PrecreateButton />
-
-                </div>
+                <p className="text-neutral-600 leading-relaxed">
+                  Create a simulated trip and generate a pending feedback experience.
+                </p>
 
               </div>
 
-              {/* RIGHT COLUMN */}
-              <div className="lg:col-span-7">
+              <PrecreateButton />
 
-                <div className="space-y-4">
+            </div>
 
-                  {reviews.map((review: any) => (
+          </div>
 
-                    <div
-                      key={review.id}
-                      className="bg-white p-6 border border-gray-300"
-                    >
+          {/* RIGHT */}
+          <div className="lg:col-span-7">
 
-                      <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center justify-between mb-6">
 
-                        <div>
+              <div>
+                <h2 className="text-3xl font-black tracking-tight">
+                  Recent activity
+                </h2>
 
-                          <h3 className="font-bold text-lg">
-                            Ride Feedback
-                          </h3>
+                <p className="text-neutral-500 mt-1">
+                  Latest ride reviews and experiences
+                </p>
+              </div>
 
-                          <p className="text-sm text-gray-500">
-                            Usuario: {review.destinatario_id}
-                          </p>
+            </div>
 
-                        </div>
+            <div className="space-y-5">
 
-                      </div>
+              {reviews.map((review: any) => (
 
-                      {review.estado_reseña === "PRECREATED" ? (
+                <div
+                  key={review.id}
+                  className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
+                >
 
-                        <div className="mt-4">
+                  <div className="flex items-start justify-between mb-6">
 
-                          <p className="text-yellow-600 font-semibold mb-4">
-                            Reseña disponible para completar
-                          </p>
+                    <div>
 
-                          <CompleteReviewForm reviewId={review.id} />
-
-                        </div>
-
-                      ) : (
-
-                        <>
-
-                          <div className="flex text-xl font-semibold text-green-600 mb-4">
-                            {"★".repeat(review.calificacion || 0)}
-                          </div>
-
-                          <p className="text-gray-700">
-                            {review.comentario}
-                          </p>
-
-                        </>
-
-                      )}
-
-                      <p className="text-xs text-gray-400 mt-4">
-                        Autor: {review.autor_id} | Estado: {review.estado_reseña}
+                      <p className="text-sm text-neutral-500 mb-2">
+                        Trip completed
                       </p>
+
+                      <h3 className="text-2xl font-black tracking-tight">
+                        Ride feedback
+                      </h3>
 
                     </div>
 
-                  ))}
+                    <div className="bg-[#f6f6f6] rounded-full px-4 py-2 text-sm font-medium">
+                      {review.estado_reseña === "PRECREATED"
+                        ? "Pending"
+                        : "Completed"}
+                    </div>
+
+                  </div>
+
+                  {review.estado_reseña === "PRECREATED" ? (
+
+                    <div>
+
+                      <p className="text-neutral-600 mb-6 leading-relaxed">
+                        Your ride is waiting for feedback. Rate your experience and help improve future trips.
+                      </p>
+
+                      <CompleteReviewForm reviewId={review.id} />
+
+                    </div>
+
+                  ) : (
+
+                    <>
+
+                      <div className="flex gap-1 text-3xl mb-5 text-green-600">
+
+                        {"★".repeat(review.calificacion || 0)}
+
+                      </div>
+
+                      <p className="text-neutral-700 text-lg leading-relaxed">
+                        {review.comentario}
+                      </p>
+
+                    </>
+
+                  )}
 
                 </div>
 
-              </div>
+              ))}
 
             </div>
 
           </div>
 
-        </main>
+        </section>
 
-      </div>
+      </main>
 
     </div>
   )
