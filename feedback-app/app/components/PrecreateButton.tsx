@@ -1,8 +1,14 @@
 "use client"
 
-export default function PrecreateButton() {
+type Props = {
+  userId: string
+}
 
+export default function PrecreateButton({ userId }: Props) {
+  console.log("PROP USER ID:", userId)
+  
   async function handleClick() {
+    console.log("USER ID:", userId)
 
     const response = await fetch("/api/reviews/precreate", {
       method: "POST",
@@ -11,8 +17,8 @@ export default function PrecreateButton() {
       },
 
       body: JSON.stringify({
-        pool_id: "pool_1",
-        driver_user_id: "driver_1",
+        pool_id: crypto.randomUUID(),
+        driver_user_id: userId,
       }),
     })
 
@@ -38,7 +44,7 @@ export default function PrecreateButton() {
       cursor-pointer
       "
     >
-      Start simulated ride
+      Empezar simulación de viaje
     </button>
   )
 }

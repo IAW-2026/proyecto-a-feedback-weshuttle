@@ -6,25 +6,47 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id String @id
+
+  role Role @default(PASSENGER)
+
+  reviewsSent Review[] @relation("ReviewsSent")
+
+  reviewsReceived Review[] @relation("ReviewsReceived")
+
+  createdAt DateTime @default(now())
+}
+
 model Review {
-  id                  String         @id @default(cuid())
+  id String @id @default(cuid())
 
-  pool_id             String
+  pool_id String
 
-  autor_id            String
-  destinatario_id     String
+  autor_id String
+  destinatario_id String
 
-  calificacion        Int?
-  comentario          String?
+  author User @relation("ReviewsSent", fields: [autor_id], references: [id])
 
-  estado_reseña       EstadoReseña  @default(PRECREATED)
+  recipient User @relation("ReviewsReceived", fields: [destinatario_id], references: [id])
 
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  calificacion Int?
+  comentario String?
+
+  estado_reseña EstadoReseña @default(PRECREATED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum EstadoReseña {
   PRECREATED
   PENDING
   COMPLETED
+}
+
+enum Role {
+  PASSENGER
+  DRIVER
+  ADMIN
 }

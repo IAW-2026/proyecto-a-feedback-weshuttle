@@ -1,19 +1,30 @@
 import { prisma } from "../lib/prisma"
 import Navbar from "./components/NavBar"
-import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import PrecreateButton from "./components/PrecreateButton"
 import CompleteReviewForm from "./components/CompleteReviewForm"
+import { getCurrentUser } from "@/lib/current-user"
 
-async function getReviews() {
+async function getReviews(userId: string) {
   try {
+
     const reviews = await prisma.review.findMany({
+      where: {
+        autor_id: userId,
+      },
+
+      include: {
+        author: true,
+        recipient: true,
+      },
+
       orderBy: {
         createdAt: "desc",
       },
     })
 
     return reviews
+
   } catch (error) {
     console.error(error)
     return []
@@ -21,13 +32,14 @@ async function getReviews() {
 }
 
 export default async function Home() {
-  const { userId } = await auth()
 
-  if (!userId) {
+  const user = await getCurrentUser()
+
+  if (!user) {
     redirect("/sign-in")
   }
 
-  const reviews = await getReviews()
+  const reviews = await getReviews(user.id)
 
   return (
     <div className="min-h-screen bg-[#f6f6f6] text-black">
@@ -77,7 +89,7 @@ export default async function Home() {
 
               </div>
 
-              <PrecreateButton />
+              <PrecreateButton userId={user.id} />
 
             </div>
 
@@ -89,6 +101,7 @@ export default async function Home() {
             <div className="flex items-center justify-between mb-6">
 
               <div>
+
                 <h2 className="text-3xl font-black tracking-tight">
                   Recent activity
                 </h2>
@@ -96,6 +109,7 @@ export default async function Home() {
                 <p className="text-neutral-500 mt-1">
                   Latest ride reviews and experiences
                 </p>
+
               </div>
 
             </div>
@@ -124,9 +138,11 @@ export default async function Home() {
                     </div>
 
                     <div className="bg-[#f6f6f6] rounded-full px-4 py-2 text-sm font-medium">
+
                       {review.estado_reseña === "PRECREATED"
                         ? "Pending"
                         : "Completed"}
+
                     </div>
 
                   </div>
@@ -148,8 +164,18 @@ export default async function Home() {
                     <>
 
                       <div className="flex gap-1 text-3xl mb-5 text-green-600">
-
                         {"★".repeat(review.calificacion || 0)}
+                      </div>
+
+                      <div className="mb-4">
+
+                        <p className="text-sm text-neutral-500">
+                          Written by
+                        </p>
+
+                        <p className="font-medium text-neutral-800">
+                          {review.author.id}
+                        </p>
 
                       </div>
 

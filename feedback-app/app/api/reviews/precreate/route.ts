@@ -5,28 +5,27 @@ import { prisma } from "@/lib/prisma"
 export async function POST(req: Request) {
 
   const body = await req.json()
+  console.log("BODY:", body)
 
   const {
     pool_id,
     driver_user_id,
-    started_at,
   } = body
 
-  // Validamos si ya existen reviews para este pool
+  console.log("DRIVER USER ID:", driver_user_id)
+
+  // Verificamos si ya existen reviews
   const existingReviews = await prisma.review.findFirst({
     where: {
       pool_id,
     },
   })
 
-  // Si ya existen, devolvemos 409
   if (existingReviews) {
-
     return Response.json(
       {
         error: "Las reviews ya fueron precreadas para este pool",
       },
-
       {
         status: 409,
       }
@@ -34,11 +33,37 @@ export async function POST(req: Request) {
   }
 
   // MOCK TEMPORAL
-  // despues esto viene de Rider App
   const paidPassengers = [
     { passenger_user_id: "user_1" },
     { passenger_user_id: "user_2" },
   ]
+
+  // Crear conductor si no existe
+  await prisma.user.upsert({
+    where: {
+      id: driver_user_id,
+    },
+    update: {},
+    create: {
+      id: driver_user_id,
+      role: "DRIVER",
+    },
+  })
+
+  // 🔥 Crear pasajeros si no existen
+  for (const passenger of paidPassengers) {
+
+    await prisma.user.upsert({
+      where: {
+        id: passenger.passenger_user_id,
+      },
+      update: {},
+      create: {
+        id: passenger.passenger_user_id,
+        role: "PASSENGER",
+      },
+    })
+  }
 
   const reviewsToCreate = []
 
