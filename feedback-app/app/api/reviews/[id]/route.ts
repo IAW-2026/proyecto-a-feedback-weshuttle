@@ -18,9 +18,10 @@ export async function PATCH(req: Request, context: any) {
         id: params.id,
       },
       data: {
-        calificacion: body.calificacion,
-        comentario: body.comentario,
-        estado_reseña: "COMPLETED",
+        rating: body.rating,
+        comment: body.comment,
+        status: "COMPLETED",
+        completed_at: new Date(),
       },
     })
 

@@ -2,7 +2,11 @@
 
 import { useUser, UserButton } from "@clerk/nextjs"
 
-export default function Navbar() {
+interface NavbarProps {
+  role?: string;
+}
+
+export default function Navbar({ role }: NavbarProps) {
   const { user, isSignedIn } = useUser()
 
   return (
@@ -29,7 +33,7 @@ export default function Navbar() {
               </p>
 
               <p className="text-xs text-neutral-500">
-                Passenger
+                {role || user.publicMetadata.role as string || "User"}
               </p>
 
             </div>

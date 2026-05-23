@@ -9,9 +9,9 @@ export async function GET(
 
   const reviews = await prisma.review.findMany({
     where: {
-      destinatario_id: user_id,
-      estado_reseña: "COMPLETED",
-      calificacion: {
+      target_user_id: user_id,
+      status: "COMPLETED",
+      rating: {
         not: null,
       },
     },
@@ -20,7 +20,7 @@ export async function GET(
   const total_reviews = reviews.length
 
     const sum = reviews.reduce(
-    (acc: number, review: any) => acc + (review.calificacion || 0),
+    (acc: number, review: any) => acc + (review.rating || 0),
     0
     )
 

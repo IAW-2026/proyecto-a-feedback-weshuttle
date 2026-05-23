@@ -1,7 +1,6 @@
 import { prisma } from "../../../lib/prisma"
 import Navbar from "../../components/NavBar"
 import { redirect } from "next/navigation"
-import PrecreateButton from "../../components/PrecreateButton"
 import CompleteReviewForm from "../../components/CompleteReviewForm"
 import { getCurrentUser } from "@/lib/current-user"
 
@@ -10,7 +9,10 @@ async function getReviews(userId: string) {
 
     const reviews = await prisma.review.findMany({
       where: {
-        autor_id: userId,
+        OR: [
+          // Reseñas recibidas por el pasajero (Conductor -> Pasajero) que ya están completas
+          { target_user_id: userId, target_role: "rider", status: "COMPLETED" }
+        ]
       },
 
       include: {
@@ -39,12 +41,16 @@ export default async function Home() {
     redirect("/sign-in")
   }
 
+  if (user.role !== "PASSENGER") {
+    redirect("/dashboard")
+  }
+
   const reviews = await getReviews(user.id)
 
   return (
     <div className="min-h-screen bg-[#f6f6f6] text-black">
 
-      <Navbar />
+      <Navbar role={user.role} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
@@ -73,24 +79,11 @@ export default async function Home() {
 
             <div className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
 
-              <div className="mb-8">
-
-                <p className="text-sm text-neutral-500 mb-3">
-                  Simulated Trip
-                </p>
-
-                <h2 className="text-3xl font-black tracking-tight mb-3">
-                  Start a ride
-                </h2>
-
-                <p className="text-neutral-600 leading-relaxed">
-                  Create a simulated trip and generate a pending feedback experience.
-                </p>
-
-              </div>
-
-              <PrecreateButton userId={user.id} />
-
+              <p className="text-sm text-neutral-500 mb-3">Welcome back</p>
+              <h2 className="text-3xl font-black tracking-tight mb-3">Passenger Status</h2>
+              <p className="text-neutral-600 leading-relaxed">
+                Your ride history and pending feedback will appear on the right as soon as a trip is completed.
+              </p>
             </div>
 
           </div>
@@ -139,7 +132,7 @@ export default async function Home() {
 
                     <div className="bg-[#f6f6f6] rounded-full px-4 py-2 text-sm font-medium">
 
-                      {review.estado_reseña === "PRECREATED"
+                      {review.status !== "COMPLETED"
                         ? "Pending"
                         : "Completed"}
 
@@ -147,7 +140,7 @@ export default async function Home() {
 
                   </div>
 
-                  {review.estado_reseña === "PRECREATED" ? (
+                  {review.status !== "COMPLETED" ? (
 
                     <div>
 
@@ -164,7 +157,7 @@ export default async function Home() {
                     <>
 
                       <div className="flex gap-1 text-3xl mb-5 text-green-600">
-                        {"★".repeat(review.calificacion || 0)}
+                        {"★".repeat(review.rating || 0)}
                       </div>
 
                       <div className="mb-4">
@@ -180,7 +173,7 @@ export default async function Home() {
                       </div>
 
                       <p className="text-neutral-700 text-lg leading-relaxed">
-                        {review.comentario}
+                        {review.comment}
                       </p>
 
                     </>

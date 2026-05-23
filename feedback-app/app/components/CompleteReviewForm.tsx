@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 export default function CompleteReviewForm({
   reviewId,
@@ -8,9 +9,10 @@ export default function CompleteReviewForm({
   reviewId: string
 }) {
 
-  const [comentario, setComentario] = useState("")
-  const [calificacion, setCalificacion] = useState(0)
+  const [comment, setComment] = useState("")
+  const [rating, setRating] = useState(0)
   const [hoveredStar, setHoveredStar] = useState(0)
+  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -23,13 +25,13 @@ export default function CompleteReviewForm({
       },
 
       body: JSON.stringify({
-        calificacion,
-        comentario,
+        rating,
+        comment,
       }),
     })
 
     if (response.ok) {
-      window.location.reload()
+      router.refresh()
     }
   }
 
@@ -50,14 +52,14 @@ export default function CompleteReviewForm({
           {[1, 2, 3, 4, 5].map((star) => {
 
             const activeStar =
-              hoveredStar >= star || calificacion >= star
+              hoveredStar >= star || rating >= star
 
             return (
               <button
                 key={star}
                 type="button"
                 onMouseEnter={() => setHoveredStar(star)}
-                onClick={() => setCalificacion(star)}
+                onClick={() => setRating(star)}
                 className={`
                   transition-all
                   duration-150
@@ -82,8 +84,8 @@ export default function CompleteReviewForm({
       <div>
 
         <textarea
-          value={comentario}
-          onChange={(e) => setComentario(e.target.value)}
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
           placeholder="Tell us about your experience..."
           className="
           w-full

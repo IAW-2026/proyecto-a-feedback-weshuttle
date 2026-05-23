@@ -2,13 +2,19 @@ import { prisma } from "../../../lib/prisma"
 import Navbar from "../../components/NavBar"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/current-user"
+import CompleteReviewForm from "../../components/CompleteReviewForm"
+import PrecreateButton from "../../components/PrecreateButton"
 
 async function getDriverReviews(userId: string) {
   try {
-
     const reviews = await prisma.review.findMany({
       where: {
-        destinatario_id: userId,
+        OR: [
+          // Reseñas recibidas (completadas por pasajeros)
+          { target_user_id: userId, status: "COMPLETED" },
+          // Reseñas que el conductor debe completar
+          { author_user_id: userId, author_role: "driver", status: { in: ["PENDING", "PRECREATED"] } }
+        ]
       },
 
       include: {
@@ -44,15 +50,20 @@ export default async function DriverDashboard() {
   const reviews = await getDriverReviews(user.id)
 
   const completedReviews = reviews.filter(
-  (review: any) => review.estado_reseña === "COMPLETED"
-)
+    (review: any) => review.status === "COMPLETED" && review.target_user_id === user.id
+  )
+
+  // Definimos la variable que faltaba
+  const pendingReviews = reviews.filter(
+    (review: any) => review.status !== "COMPLETED" && review.author_user_id === user.id
+  )
 
     const averageRating =
     completedReviews.length > 0
         ? (
             completedReviews.reduce(
             (acc: number, review: any) =>
-                acc + (review.calificacion || 0),
+                acc + (review.rating || 0),
             0
             ) / completedReviews.length
         ).toFixed(1)
@@ -61,7 +72,7 @@ export default async function DriverDashboard() {
   return (
     <div className="min-h-screen bg-[#f6f6f6] text-black">
 
-      <Navbar />
+      <Navbar role={user.role} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
@@ -136,10 +147,56 @@ export default async function DriverDashboard() {
 
             </div>
 
+            {/* SIMULATION TOOLS */}
+            <div className="mt-6 bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border-2 border-dashed border-blue-200">
+              
+              <div className="mb-6">
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-2">
+                  Stage 2 Debug
+                </p>
+                <h3 className="text-2xl font-black tracking-tight">
+                  Ride Simulation
+                </h3>
+              </div>
+
+              <p className="text-neutral-600 text-sm mb-6 leading-relaxed">
+                In Stage 3, this action will be triggered by the Driver App. 
+                For now, use this button to generate the mutual feedback forms.
+              </p>
+
+              <PrecreateButton userId={user.id} />
+
+            </div>
+
           </div>
 
           {/* RIGHT */}
           <div className="lg:col-span-7">
+
+            {pendingReviews.length > 0 && (
+              <div className="mb-10">
+                <h2 className="text-3xl font-black tracking-tight mb-6">
+                  Pending passenger reviews
+                </h2>
+                <div className="space-y-5">
+                  {pendingReviews.map((review: any) => (
+                    <div key={review.id} className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border-2 border-blue-100">
+                      <div className="flex items-start justify-between mb-6">
+                        <div>
+                          <p className="text-sm text-blue-600 font-bold mb-2">ACTION REQUIRED</p>
+                          <h3 className="text-2xl font-black tracking-tight">Rate your passenger</h3>
+                          <p className="text-neutral-500 text-sm mt-1">Passenger ID: {review.target_user_id}</p>
+                        </div>
+                        <div className="bg-blue-50 text-blue-700 rounded-full px-4 py-2 text-sm font-bold">
+                          Pending
+                        </div>
+                      </div>
+                      <CompleteReviewForm reviewId={review.id} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between mb-6">
 
@@ -182,7 +239,7 @@ export default async function DriverDashboard() {
 
                     <div className="bg-[#f6f6f6] rounded-full px-4 py-2 text-sm font-medium">
 
-                      {review.estado_reseña === "PRECREATED"
+                      {review.status !== "COMPLETED"
                         ? "Pending"
                         : "Completed"}
 
@@ -190,12 +247,12 @@ export default async function DriverDashboard() {
 
                   </div>
 
-                  {review.estado_reseña === "COMPLETED" ? (
+                  {review.status === "COMPLETED" ? (
 
                     <>
 
                       <div className="flex gap-1 text-3xl mb-5 text-green-600">
-                        {"★".repeat(review.calificacion || 0)}
+                        {"★".repeat(review.rating || 0)}
                       </div>
 
                       <div className="mb-4">
@@ -211,7 +268,7 @@ export default async function DriverDashboard() {
                       </div>
 
                       <p className="text-neutral-700 text-lg leading-relaxed">
-                        {review.comentario}
+                        {review.comment}
                       </p>
 
                     </>

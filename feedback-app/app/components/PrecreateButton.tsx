@@ -1,15 +1,15 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+
 type Props = {
   userId: string
 }
 
 export default function PrecreateButton({ userId }: Props) {
-  console.log("PROP USER ID:", userId)
+  const router = useRouter()
   
   async function handleClick() {
-    console.log("USER ID:", userId)
-
     const response = await fetch("/api/reviews/precreate", {
       method: "POST",
       headers: {
@@ -19,11 +19,12 @@ export default function PrecreateButton({ userId }: Props) {
       body: JSON.stringify({
         pool_id: crypto.randomUUID(),
         driver_user_id: userId,
+        started_at: new Date().toISOString(),
       }),
     })
 
     if (response.ok) {
-      window.location.reload()
+      router.refresh()
     }
   }
 

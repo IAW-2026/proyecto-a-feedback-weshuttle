@@ -12,12 +12,12 @@ export default async function DashboardPage() {
   switch (user.role) {
 
     case "ADMIN":
-      redirect("/dashboard/admin")
+      return redirect("/dashboard/admin")
 
     case "DRIVER":
-      redirect("/dashboard/driver")
+      return redirect("/dashboard/driver")
 
     default:
-      redirect("/dashboard/passenger")
+      return redirect("/dashboard/passenger")
   }
 }
