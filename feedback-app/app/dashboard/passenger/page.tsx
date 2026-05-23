@@ -58,15 +58,15 @@ export default async function Home() {
         <section className="mb-14">
 
           <p className="text-sm text-neutral-500 mb-4">
-            WeShuttle Feedback System
+            WeShuttle Sistema de Feedback
           </p>
 
           <h1 className="text-5xl sm:text-6xl font-black tracking-tight max-w-3xl leading-[0.95] mb-6">
-            Your ride experience matters.
+            Tu experiencia de viaje importa.
           </h1>
 
           <p className="text-lg text-neutral-600 max-w-xl leading-relaxed">
-            Help improve every trip with fast and simple ride feedback.
+            Ayudanos a mejorar cada viaje con una reseña rapida y sencilla.
           </p>
 
         </section>
@@ -79,10 +79,10 @@ export default async function Home() {
 
             <div className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
 
-              <p className="text-sm text-neutral-500 mb-3">Welcome back</p>
-              <h2 className="text-3xl font-black tracking-tight mb-3">Passenger Status</h2>
+              <p className="text-sm text-neutral-500 mb-3">Bienvenido de vuelta</p>
+              <h2 className="text-3xl font-black tracking-tight mb-3">Estado de Pasajero</h2>
               <p className="text-neutral-600 leading-relaxed">
-                Your ride history and pending feedback will appear on the right as soon as a trip is completed.
+                Tu historial de viajes y comentarios pendientes aparecerán a la derecha tan pronto como se complete un viaje.
               </p>
             </div>
 
@@ -96,11 +96,11 @@ export default async function Home() {
               <div>
 
                 <h2 className="text-3xl font-black tracking-tight">
-                  Recent activity
+                  Actividad reciente
                 </h2>
 
                 <p className="text-neutral-500 mt-1">
-                  Latest ride reviews and experiences
+                  Últimas reseñas y experiencias de viaje
                 </p>
 
               </div>
@@ -121,11 +121,11 @@ export default async function Home() {
                     <div>
 
                       <p className="text-sm text-neutral-500 mb-2">
-                        Trip completed
+                        Viaje completado
                       </p>
 
                       <h3 className="text-2xl font-black tracking-tight">
-                        Ride feedback
+                        Feedback del viaje
                       </h3>
 
                     </div>
@@ -145,7 +145,7 @@ export default async function Home() {
                     <div>
 
                       <p className="text-neutral-600 mb-6 leading-relaxed">
-                        Your ride is waiting for feedback. Rate your experience and help improve future trips.
+                        Tu viaje está esperando feedback. Evaluá tu experiencia y ayuda a mejorar los viajes futuros.
                       </p>
 
                       <CompleteReviewForm reviewId={review.id} />
@@ -163,7 +163,7 @@ export default async function Home() {
                       <div className="mb-4">
 
                         <p className="text-sm text-neutral-500">
-                          Written by
+                          Escrito por
                         </p>
 
                         <p className="font-medium text-neutral-800">
