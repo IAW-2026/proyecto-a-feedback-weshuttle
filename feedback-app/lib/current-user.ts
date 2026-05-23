@@ -1,27 +1,32 @@
-import { auth } from "@clerk/nextjs/server"
+import { currentUser } from "@clerk/nextjs/server"
 import { prisma } from "./prisma"
 
 export async function getCurrentUser() {
-  const { userId } = await auth()
+  const clerkUser = await currentUser()
 
-  if (!userId) {
+  if (!clerkUser) {
     return null
   }
 
-  let user = await prisma.user.findUnique({
+  const fullName = `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim()
+
+  // Mapeamos el rol de Clerk a nuestro Enum de Prisma
+  const clerkRole = (clerkUser.publicMetadata.role as string)?.toUpperCase()
+  const role = clerkRole === "DRIVER" ? "DRIVER" : clerkRole === "ADMIN" ? "ADMIN" : "PASSENGER"
+
+  const user = await prisma.user.upsert({
     where: {
-      id: userId,
+      id: clerkUser.id,
+    },
+    update: {
+      name: fullName || null,
+    },
+    create: {
+      id: clerkUser.id,
+      name: fullName || null,
+      role: role,
     },
   })
-
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        id: userId,
-        role: "PASSENGER",
-      },
-    })
-  }
 
   return user
 }

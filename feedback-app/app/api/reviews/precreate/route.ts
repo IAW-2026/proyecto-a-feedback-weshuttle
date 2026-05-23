@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 interface PrecreateReviewRequestBody {
   pool_id: string;
   driver_user_id: string;
+  driver_name?: string; // Agregamos esto para capturar el nombre del conductor
   force_test_dual_role?: boolean;
   started_at: string; // ISO 8601 string
 }
@@ -34,14 +35,14 @@ interface MockRiderAppPassengersResponse {
 export async function POST(req: Request) {
   try {
     const body: PrecreateReviewRequestBody = await req.json();
-    const { pool_id, driver_user_id, started_at } = body;
+    const { pool_id, driver_user_id, driver_name, started_at } = body;
 
     if (!pool_id || !driver_user_id || !started_at) {
       return NextResponse.json({ error: 'BAD_REQUEST', message: 'Missing required fields' }, { status: 400 });
     }
 
     // 1. Mockear la llamada a la Rider App para obtener pasajeros pagados
-    // En un entorno real, harías un fetch a la URL de la Rider App:
+    // En la Etapa 3, aquí harías un fetch real:
     // const riderAppResponse = await fetch(`${process.env.RIDER_APP_API_URL}/api/pools/${pool_id}/passengers?status=PAID`);
     // const riderAppData: MockRiderAppPassengersResponse = await riderAppResponse.json();
 
@@ -73,18 +74,32 @@ export async function POST(req: Request) {
           max_price: 5000,
           effective_price: 3800,
         },
+        {
+          reservation_id: 'res_103',
+          passenger_user_id: 'user_rider_001', // Otro ID de usuario de Clerk
+          passenger_name: 'Juan Sebastian Bassi',
+          reservation_status: 'PAID',
+          pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
+          destination_id: 'dest_polo_petroquimico',
+          departure_time: '2026-06-10T08:00:00Z',
+          max_price: 5000,
+          effective_price: 3800,
+        }
       ],
     };
 
     const paidPassengers = mockRiderAppData.passengers.filter(p => p.reservation_status === 'PAID');
     let createdReviewsCount = 0;
 
-    // Asegurar que el conductor existe en nuestra base de datos local
+    // CAPTURA: Asegurar que el conductor existe y actualizar su nombre si viene en el request
     await prisma.user.upsert({
       where: { id: driver_user_id },
-      update: {},
+      update: {
+        name: driver_name // Si Juliana (Driver App) nos manda el nombre, lo guardamos/actualizamos
+      },
       create: {
         id: driver_user_id,
+        name: driver_name || "Conductor WeShuttle", 
         role: 'DRIVER',
       },
     });
@@ -94,9 +109,12 @@ export async function POST(req: Request) {
       // Asegurar que el pasajero existe en nuestra base de datos local
       await prisma.user.upsert({
         where: { id: passenger.passenger_user_id },
-        update: {},
+        update: { 
+          name: passenger.passenger_name 
+        },
         create: {
           id: passenger.passenger_user_id,
+          name: passenger.passenger_name,
           role: 'PASSENGER',
         },
       });

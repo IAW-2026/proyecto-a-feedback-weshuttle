@@ -9,17 +9,18 @@ async function main() {
   const driverId = 'user_driver_001'
 
   const testUsers = [
-    { id: rider1Id, role: 'PASSENGER' },
-    { id: rider2Id, role: 'PASSENGER' },
-    { id: driverId, role: 'DRIVER' },
+    { id: rider1Id, role: 'PASSENGER', name: 'Franco Gulino' },
+    { id: rider2Id, role: 'PASSENGER', name: 'Juan Ignacio Ibarra' },
+    { id: driverId, role: 'DRIVER', name: 'Juliana Pagani' },
   ]
 
   for (const u of testUsers) {
     await prisma.user.upsert({
       where: { id: u.id },
-      update: {},
+      update: { name: u.name },
       create: {
         id: u.id,
+        name: u.name,
         role: u.role as any, // Cast para evitar conflictos de enum si ts-node tiene problemas de tipos
       },
     })

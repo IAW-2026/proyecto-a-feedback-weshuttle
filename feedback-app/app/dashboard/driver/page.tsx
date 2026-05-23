@@ -84,11 +84,11 @@ export default async function DriverDashboard() {
           </p>
 
           <h1 className="text-5xl sm:text-6xl font-black tracking-tight max-w-3xl leading-[0.95] mb-6">
-            Your driving reputation matters.
+            Tu experiencia de manejo importa.
           </h1>
 
           <p className="text-lg text-neutral-600 max-w-xl leading-relaxed">
-            Track passenger feedback and improve every rider experience.
+            Trackear el feedback del pasajero y mejorar cada experiencia del conductor.
           </p>
 
         </section>
@@ -104,7 +104,7 @@ export default async function DriverDashboard() {
               <div className="mb-8">
 
                 <p className="text-sm text-neutral-500 mb-3">
-                  Driver Statistics
+                  Estadísticas del conductor
                 </p>
 
                 <h2 className="text-5xl font-black tracking-tight mb-3">
@@ -112,7 +112,7 @@ export default async function DriverDashboard() {
                 </h2>
 
                 <p className="text-neutral-600 leading-relaxed">
-                  Average passenger rating based on completed trips.
+                  Calificacion promedio del pasajero basada en viajes completados.
                 </p>
 
               </div>
@@ -122,7 +122,7 @@ export default async function DriverDashboard() {
                 <div className="bg-[#f6f6f6] rounded-2xl p-5">
 
                   <p className="text-sm text-neutral-500 mb-1">
-                    Total Reviews
+                    Reseñas Recibidas
                   </p>
 
                   <p className="text-3xl font-black">
@@ -134,7 +134,7 @@ export default async function DriverDashboard() {
                 <div className="bg-[#f6f6f6] rounded-2xl p-5">
 
                   <p className="text-sm text-neutral-500 mb-1">
-                    Completed Reviews
+                    Reseñas Completadas
                   </p>
 
                   <p className="text-3xl font-black">
@@ -152,16 +152,16 @@ export default async function DriverDashboard() {
               
               <div className="mb-6">
                 <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-2">
-                  Stage 2 Debug
+                  Etapa 2 Debug
                 </p>
                 <h3 className="text-2xl font-black tracking-tight">
-                  Ride Simulation
+                  Simulación de Viaje
                 </h3>
               </div>
 
               <p className="text-neutral-600 text-sm mb-6 leading-relaxed">
-                In Stage 3, this action will be triggered by the Driver App. 
-                For now, use this button to generate the mutual feedback forms.
+                En la etapa 3 esta acción será disparada por la Driver App
+                Por ahora usá este botón para generar formularios de feedback mutuos.
               </p>
 
               <PrecreateButton userId={user.id} />
@@ -176,19 +176,19 @@ export default async function DriverDashboard() {
             {pendingReviews.length > 0 && (
               <div className="mb-10">
                 <h2 className="text-3xl font-black tracking-tight mb-6">
-                  Pending passenger reviews
+                  Reseñas Pendientes de Pasajeros
                 </h2>
                 <div className="space-y-5">
                   {pendingReviews.map((review: any) => (
                     <div key={review.id} className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border-2 border-blue-100">
                       <div className="flex items-start justify-between mb-6">
                         <div>
-                          <p className="text-sm text-blue-600 font-bold mb-2">ACTION REQUIRED</p>
-                          <h3 className="text-2xl font-black tracking-tight">Rate your passenger</h3>
-                          <p className="text-neutral-500 text-sm mt-1">Passenger ID: {review.target_user_id}</p>
+                          <p className="text-sm text-blue-600 font-bold mb-2">ACCIÓN REQUERIDA</p>
+                          <h3 className="text-2xl font-black tracking-tight">Califica a tu pasajero</h3>
+                          <p className="text-neutral-500 text-sm mt-1">Pasajero: {review.recipient.name || review.target_user_id}</p>
                         </div>
                         <div className="bg-blue-50 text-blue-700 rounded-full px-4 py-2 text-sm font-bold">
-                          Pending
+                          Pendiente
                         </div>
                       </div>
                       <CompleteReviewForm reviewId={review.id} />
@@ -203,11 +203,11 @@ export default async function DriverDashboard() {
               <div>
 
                 <h2 className="text-3xl font-black tracking-tight">
-                  Passenger feedback
+                  Reseñas de Pasajeros
                 </h2>
 
                 <p className="text-neutral-500 mt-1">
-                  Latest reviews received from passengers
+                  Últimas reseñas y experiencias de viajes
                 </p>
 
               </div>
@@ -228,11 +228,11 @@ export default async function DriverDashboard() {
                     <div>
 
                       <p className="text-sm text-neutral-500 mb-2">
-                        Ride completed
+                        Viaje completado
                       </p>
 
                       <h3 className="text-2xl font-black tracking-tight">
-                        Passenger review
+                        Reseña del pasajero
                       </h3>
 
                     </div>
@@ -258,11 +258,11 @@ export default async function DriverDashboard() {
                       <div className="mb-4">
 
                         <p className="text-sm text-neutral-500">
-                          Passenger
+                          Pasajero
                         </p>
 
                         <p className="font-medium text-neutral-800">
-                          {review.author.id}
+                          {review.author.name || review.author.id}
                         </p>
 
                       </div>
@@ -276,7 +276,7 @@ export default async function DriverDashboard() {
                   ) : (
 
                     <p className="text-neutral-600 leading-relaxed">
-                      This trip has not received passenger feedback yet.
+                      Este viaje no ha recibido aún un feedback del pasajero.
                     </p>
 
                   )}

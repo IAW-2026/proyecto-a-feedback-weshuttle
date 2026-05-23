@@ -167,7 +167,7 @@ export default async function Home() {
                         </p>
 
                         <p className="font-medium text-neutral-800">
-                          {review.author.id}
+                          {review.author.name || review.author.id}
                         </p>
 
                       </div>

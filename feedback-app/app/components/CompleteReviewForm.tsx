@@ -41,7 +41,7 @@ export default function CompleteReviewForm({
       <div>
 
         <p className="text-sm text-neutral-500 mb-4">
-          Rate your trip
+          Calificá tu Viaje
         </p>
 
         <div
@@ -86,7 +86,7 @@ export default function CompleteReviewForm({
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Tell us about your experience..."
+          placeholder="Contanos sobre tu experiencia..."
           className="
           w-full
           min-h-[140px]
