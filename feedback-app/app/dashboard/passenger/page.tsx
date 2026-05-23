@@ -10,6 +10,8 @@ async function getReviews(userId: string) {
     const reviews = await prisma.review.findMany({
       where: {
         OR: [
+          // Solo las reseñas que el pasajero TIENE pendientes de escribir
+          { author_user_id: userId, author_role: "rider", status: "PENDING" }, 
           // Reseñas recibidas por el pasajero (Conductor -> Pasajero) que ya están completas
           { target_user_id: userId, target_role: "rider", status: "COMPLETED" }
         ]
