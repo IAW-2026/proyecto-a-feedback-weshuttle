@@ -7,19 +7,29 @@ import Navbar from "../../../../components/NavBar"
 import { getCurrentUser } from "@/lib/current-user"
 import { prisma } from "../../../../../lib/prisma"
 
-type Props = {
-  params: {
-    poolId: string
+import { Prisma } from "@prisma/client"
+
+type ReviewWithAuthor = Prisma.ReviewGetPayload<{
+  include: {
+    author: true
   }
+}>
+
+type Props = {
+  params: Promise<{
+    poolId: string
+  }>
 }
 
 async function getTripReviews(
   poolId: string,
   userId: string
-) {
+): Promise<ReviewWithAuthor[]> {
+
   try {
 
     return await prisma.review.findMany({
+
       where: {
         pool_id: poolId,
         target_user_id: userId,
@@ -41,27 +51,35 @@ async function getTripReviews(
     })
 
   } catch (error) {
+
     console.error(error)
     return []
+
   }
 }
 
 function formatTripDate(date: Date) {
+
   return new Intl.DateTimeFormat("es-AR", {
     dateStyle: "full",
     timeStyle: "short",
   }).format(date)
+
 }
 
 function formatTripKeyDate(date: Date) {
+
   return new Intl.DateTimeFormat("es-AR", {
     dateStyle: "long",
   }).format(date)
+
 }
 
 export default async function TripReviewsPage({
   params,
 }: Props) {
+
+  const { poolId } = await params
 
   const user = await getCurrentUser()
 
@@ -74,7 +92,7 @@ export default async function TripReviewsPage({
   }
 
   const reviews = await getTripReviews(
-    params.poolId,
+    poolId,
     user.id
   )
 
@@ -84,7 +102,7 @@ export default async function TripReviewsPage({
     totalReviews > 0
       ? (
           reviews.reduce(
-            (acc: number, review: any) =>
+            (acc, review) =>
               acc + (review.rating || 0),
             0
           ) / totalReviews
@@ -119,6 +137,10 @@ export default async function TripReviewsPage({
               {tripDate
                 ? formatTripKeyDate(tripDate)
                 : "Viaje"}
+
+              <span className="block text-xl text-neutral-400 mt-2 font-medium">
+                Pool: {poolId.slice(0, 8)}
+              </span>
 
             </h1>
 
@@ -173,7 +195,7 @@ export default async function TripReviewsPage({
 
           <section className="space-y-5">
 
-            {reviews.map((review: any) => (
+            {reviews.map((review) => (
 
               <article
                 key={review.id}
