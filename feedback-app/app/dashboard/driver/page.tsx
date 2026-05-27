@@ -4,15 +4,26 @@ import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/current-user"
 import CompleteReviewForm from "../../components/CompleteReviewForm"
 import PrecreateButton from "../../components/PrecreateButton"
+import Link from "next/link"
+import { Prisma } from "@prisma/client"
 
-async function getDriverReviews(userId: string) {
+// Definimos el tipo exacto que devuelve Prisma incluyendo las relaciones
+type ReviewWithUsers = Prisma.ReviewGetPayload<{
+  include: { author: true; recipient: true }
+}>
+
+type GroupedPendingTrip = {
+  poolId: string;
+  date: Date;
+  reviews: ReviewWithUsers[];
+}
+
+async function getDriverReviews(userId: string): Promise<ReviewWithUsers[]> {
   try {
     const reviews = await prisma.review.findMany({
       where: {
         OR: [
-          // Reseñas recibidas (completadas por pasajeros)
           { target_user_id: userId, status: "COMPLETED" },
-          // Reseñas que el conductor debe completar
           { author_user_id: userId, author_role: "driver", status: { in: ["PENDING", "PRECREATED"] } }
         ]
       },
@@ -35,6 +46,27 @@ async function getDriverReviews(userId: string) {
   }
 }
 
+function groupPendingByTrip(reviews: ReviewWithUsers[]): GroupedPendingTrip[] {
+  const groups = new Map<string, GroupedPendingTrip>();
+
+  reviews.forEach(review => {
+    const existing = groups.get(review.pool_id);
+    if (!existing) {
+      groups.set(review.pool_id, {
+        poolId: review.pool_id,
+        date: review.createdAt,
+        reviews: [review]
+      });
+    } else {
+      existing.reviews.push(review);
+    }
+  });
+
+  return Array.from(groups.values()).sort(
+    (a, b) => b.date.getTime() - a.date.getTime()
+  );
+}
+
 export default async function DriverDashboard() {
 
   const user = await getCurrentUser()
@@ -50,24 +82,24 @@ export default async function DriverDashboard() {
   const reviews = await getDriverReviews(user.id)
 
   const completedReviews = reviews.filter(
-    (review: any) => review.status === "COMPLETED" && review.target_user_id === user.id
+    (review) => review.status === "COMPLETED" && review.target_user_id === user.id
   )
 
-  // Definimos la variable que faltaba
   const pendingReviews = reviews.filter(
-    (review: any) => review.status !== "COMPLETED" && review.author_user_id === user.id
+    (review) => review.status !== "COMPLETED" && review.author_user_id === user.id
   )
 
-    const averageRating =
+  const groupedPending = groupPendingByTrip(pendingReviews);
+
+  const averageRating =
     completedReviews.length > 0
-        ? (
-            completedReviews.reduce(
-            (acc: number, review: any) =>
-                acc + (review.rating || 0),
+      ? (
+          completedReviews.reduce(
+            (acc, review) => acc + (review.rating || 0),
             0
-            ) / completedReviews.length
+          ) / completedReviews.length
         ).toFixed(1)
-        : "0.0"
+      : "0.0"
 
   return (
     <div className="min-h-screen bg-[#f6f6f6] text-black">
@@ -173,126 +205,76 @@ export default async function DriverDashboard() {
           {/* RIGHT */}
           <div className="lg:col-span-7">
 
-            {pendingReviews.length > 0 && (
+            {/* NAVEGACIÓN RÁPIDA */}
+            <div className="mb-6 bg-[#0f172a] text-white rounded-[28px] p-8 shadow-lg">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <p className="text-sm text-white/60 mb-1 uppercase font-bold tracking-wider">Historial de Feedback</p>
+                  <h3 className="text-2xl font-black tracking-tight mb-2">Consulta tus viajes anteriores</h3>
+                  <p className="text-white/70 text-sm max-w-md leading-relaxed">
+                    Accede al registro completo de reseñas recibidas, organizadas por pool y fecha para un mejor seguimiento.
+                  </p>
+                </div>
+
+                <Link
+                  href="/dashboard/driver/trips"
+                  className="inline-flex shrink-0 items-center justify-center rounded-full bg-white text-[#0f172a] px-8 py-4 text-sm font-black transition-all hover:bg-neutral-100 hover:scale-105 active:scale-95"
+                >
+                  Ver mis viajes →
+                </Link>
+              </div>
+            </div>
+
+            {groupedPending.length > 0 && (
               <div className="mb-10">
                 <h2 className="text-3xl font-black tracking-tight mb-6">
                   Reseñas Pendientes de Pasajeros
                 </h2>
-                <div className="space-y-5">
-                  {pendingReviews.map((review: any) => (
-                    <div key={review.id} className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border-2 border-blue-100">
-                      <div className="flex items-start justify-between mb-6">
-                        <div>
-                          <p className="text-sm text-blue-600 font-bold mb-2">ACCIÓN REQUERIDA</p>
-                          <h3 className="text-2xl font-black tracking-tight">Califica a tu pasajero</h3>
-                          <p className="text-neutral-500 text-sm mt-1">Pasajero: {review.recipient.name || review.target_user_id}</p>
-                        </div>
-                        <div className="bg-blue-50 text-blue-700 rounded-full px-4 py-2 text-sm font-bold">
-                          Pendiente
-                        </div>
+                <div className="space-y-8">
+                  {groupedPending.map((group) => (
+                    <div key={group.poolId} className="bg-white rounded-[28px] p-1 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-neutral-200 overflow-hidden">
+                      {/* Encabezado del Grupo de Viaje */}
+                      <div className="bg-neutral-50 px-8 py-4 border-b border-neutral-100 flex justify-between items-center">
+                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                          Viaje Pool: {group.poolId.slice(0, 8)}...
+                        </p>
+                        <span className="text-xs text-neutral-500 font-medium">
+                          {new Intl.DateTimeFormat("es-AR", { dateStyle: 'medium', timeStyle: 'short' }).format(group.date)}
+                        </span>
                       </div>
-                      <CompleteReviewForm reviewId={review.id} />
+
+                      {/* Lista de formularios para este viaje */}
+                      <div className="p-4 space-y-4">
+                        {group.reviews.map((review) => (
+                          <div key={review.id} className="bg-[#fbfbfb] rounded-[24px] p-6 border border-blue-50">
+                            <div className="flex items-center justify-between mb-6">
+                              <div>
+                                <p className="text-sm text-blue-600 font-bold">CALIFICAR A:</p>
+                                <h3 className="text-xl font-black tracking-tight">
+                                  {review.recipient.name || "Pasajero"}
+                                </h3>
+                              </div>
+                            </div>
+                            <CompleteReviewForm reviewId={review.id} />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="flex items-center justify-between mb-6">
-
-              <div>
-
-                <h2 className="text-3xl font-black tracking-tight">
-                  Reseñas de Pasajeros
-                </h2>
-
-                <p className="text-neutral-500 mt-1">
-                  Últimas reseñas y experiencias de viajes
-                </p>
-
+            {groupedPending.length === 0 && (
+              <div className="bg-white rounded-[28px] p-12 text-center border border-neutral-100">
+                <p className="text-5xl mb-4">🎉</p>
+                <h2 className="text-2xl font-black">¡Estás al día!</h2>
+                <p className="text-neutral-500 mt-2">No tenés reseñas pendientes de completar.</p>
               </div>
-
-            </div>
-
-            <div className="space-y-5">
-
-              {reviews.map((review: any) => (
-
-                <div
-                  key={review.id}
-                  className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
-                >
-
-                  <div className="flex items-start justify-between mb-6">
-
-                    <div>
-
-                      <p className="text-sm text-neutral-500 mb-2">
-                        Viaje completado
-                      </p>
-
-                      <h3 className="text-2xl font-black tracking-tight">
-                        Reseña del pasajero
-                      </h3>
-
-                    </div>
-
-                    <div className="bg-[#f6f6f6] rounded-full px-4 py-2 text-sm font-medium">
-
-                      {review.status !== "COMPLETED"
-                        ? "Pending"
-                        : "Completed"}
-
-                    </div>
-
-                  </div>
-
-                  {review.status === "COMPLETED" ? (
-
-                    <>
-
-                      <div className="flex gap-1 text-3xl mb-5 text-green-600">
-                        {"★".repeat(review.rating || 0)}
-                      </div>
-
-                      <div className="mb-4">
-
-                        <p className="text-sm text-neutral-500">
-                          Pasajero
-                        </p>
-
-                        <p className="font-medium text-neutral-800">
-                          {review.author.name || review.author.id}
-                        </p>
-
-                      </div>
-
-                      <p className="text-neutral-700 text-lg leading-relaxed">
-                        {review.comment}
-                      </p>
-
-                    </>
-
-                  ) : (
-
-                    <p className="text-neutral-600 leading-relaxed">
-                      Este viaje no ha recibido aún un feedback del pasajero.
-                    </p>
-
-                  )}
-
-                </div>
-
-              ))}
-
-            </div>
-
+            )}
           </div>
-
         </section>
-
       </main>
-
     </div>
   )
 }

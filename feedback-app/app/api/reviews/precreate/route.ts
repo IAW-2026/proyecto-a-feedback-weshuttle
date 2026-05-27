@@ -55,7 +55,7 @@ export async function POST(req: Request) {
           reservation_id: 'res_101',
           // Usando el ID de pasajero real proporcionado para testing
           passenger_user_id: 'user_3Dwjs2tNYWJq2r3WfN06m9gm533', 
-          passenger_name: 'Pasajero Real de Prueba',
+          passenger_name: 'Usuario de Juan',
           reservation_status: 'PAID',
           pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
           destination_id: 'dest_polo_petroquimico',
@@ -80,6 +80,17 @@ export async function POST(req: Request) {
           passenger_name: 'Juan Sebastian Bassi',
           reservation_status: 'PAID',
           pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
+          destination_id: 'dest_polo_petroquimico',
+          departure_time: '2026-06-10T08:00:00Z',
+          max_price: 5000,
+          effective_price: 3800,
+        },
+        {
+          reservation_id: 'res_104',
+          passenger_user_id: 'user_3EJohyoiSblh2utnRB6SrnhumBH', // Otro ID de usuario de Clerk
+          passenger_name: 'John Sebastien',
+          reservation_status: 'PAID',
+          pickup_point: { address: 'Sarmiento 900', lat: -38.703, lng: -62.201 },
           destination_id: 'dest_polo_petroquimico',
           departure_time: '2026-06-10T08:00:00Z',
           max_price: 5000,

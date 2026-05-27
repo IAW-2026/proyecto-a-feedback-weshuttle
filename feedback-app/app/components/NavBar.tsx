@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useUser, UserButton } from "@clerk/nextjs"
 
 interface NavbarProps {
@@ -7,20 +8,27 @@ interface NavbarProps {
 }
 
 export default function Navbar({ role }: NavbarProps) {
+
   const { user, isSignedIn } = useUser()
 
+  const homeHref =
+    role === "DRIVER"
+      ? "/dashboard/driver"
+      : "/dashboard"
+
   return (
+
     <header className="sticky top-0 z-50 bg-[#f6f6f6]/80 backdrop-blur-xl border-b border-black/5">
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 
-        <div>
+        <Link href={homeHref}>
 
-          <h1 className="text-2xl font-black tracking-tight">
+          <h1 className="text-2xl font-black tracking-tight hover:opacity-80 transition-opacity cursor-pointer">
             WeShuttle
           </h1>
 
-        </div>
+        </Link>
 
         {isSignedIn && (
 
@@ -47,5 +55,6 @@ export default function Navbar({ role }: NavbarProps) {
       </div>
 
     </header>
+
   )
 }

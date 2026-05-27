@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   // ya fue completada
-  if (review.estado_reseña === "COMPLETED") {
+  if (review.status === "COMPLETED") {
     return new Response(
       "Review already completed",
       { status: 409 }
@@ -40,9 +40,9 @@ export async function POST(req: Request) {
       id: review_id,
     },
     data: {
-      calificacion,
-      comentario,
-      estado_reseña: "COMPLETED",
+      rating: calificacion,
+      comment: comentario,
+      status: "COMPLETED",
     },
   })
 
