@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     // ClerkProvider es un componente que nos permite usar los hooks de Clerk 
     // en toda la aplicacion
-    <ClerkProvider>
+    <ClerkProvider afterSignOutUrl="/sign-in">
       <html lang="es">
         <body className={inter.className}>
           {children}
