@@ -297,12 +297,16 @@ export default async function DriverDashboard() {
                       <div className="p-4 space-y-4">
                         {group.reviews.map((review) => (
                           <div key={review.id} className="bg-white rounded-[12px] p-6 border border-[var(--ws-outline)]">
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-start justify-between mb-6 gap-4">
                               <div>
                                 <p className="text-sm text-[var(--ws-midnight)] font-bold">CALIFICAR A:</p>
                                 <h3 className="text-xl font-black tracking-tight text-[var(--ws-midnight)]">
                                   {review.recipient.name || "Pasajero"}
                                 </h3>
+                              </div>
+
+                              <div className="ws-pill ws-pill-warning shrink-0">
+                                Pending
                               </div>
                             </div>
                             <CompleteReviewForm reviewId={review.id} />
