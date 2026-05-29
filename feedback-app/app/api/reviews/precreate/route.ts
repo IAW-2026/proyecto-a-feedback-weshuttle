@@ -55,7 +55,7 @@ export async function POST(req: Request) {
           reservation_id: 'res_101',
           // Usando el ID de pasajero real proporcionado para testing
           passenger_user_id: 'user_3Dwjs2tNYWJq2r3WfN06m9gm533', 
-          passenger_name: 'Usuario de Juan',
+          passenger_name: 'Juan Sebastian BASSI',
           reservation_status: 'PAID',
           pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
           destination_id: 'dest_polo_petroquimico',
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
         },
         {
           reservation_id: 'res_102',
-          passenger_user_id: 'user_rider_002', // Otro ID de usuario de Clerk
+          passenger_user_id: 'user_rider_002',
           passenger_name: 'Juan Ignacio Ibarra',
           reservation_status: 'PAID',
           pickup_point: { address: 'Sarmiento 850', lat: -38.713, lng: -62.261 },
@@ -76,8 +76,8 @@ export async function POST(req: Request) {
         },
         {
           reservation_id: 'res_103',
-          passenger_user_id: 'user_rider_001', // Otro ID de usuario de Clerk
-          passenger_name: 'Juan Sebastian Bassi',
+          passenger_user_id: 'user_rider_001',
+          passenger_name: 'NPC 001',
           reservation_status: 'PAID',
           pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
           destination_id: 'dest_polo_petroquimico',

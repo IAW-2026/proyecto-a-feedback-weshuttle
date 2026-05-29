@@ -158,7 +158,7 @@ export default async function DriverDashboard() {
                   </p>
 
                   <p className="text-3xl font-black text-[var(--ws-midnight)]">
-                    {reviews.length}
+                    {completedReviews.length}
                   </p>
 
                 </div>
@@ -166,11 +166,11 @@ export default async function DriverDashboard() {
                 <div className="bg-[var(--ws-info-soft)] rounded-[12px] p-5 border border-[var(--ws-outline)]">
 
                   <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
-                    Reseñas Completadas
+                    Reseñas Pendientes de Envío
                   </p>
 
                   <p className="text-3xl font-black text-[var(--ws-midnight)]">
-                    {completedReviews.length}
+                    {pendingReviews.length}
                   </p>
 
                 </div>
