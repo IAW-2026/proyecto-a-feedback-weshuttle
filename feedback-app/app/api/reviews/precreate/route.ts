@@ -115,6 +115,17 @@ export async function POST(req: Request) {
       },
     });
 
+    // Limpia una simulación previa para que el conteo arranque en cero
+    await prisma.review.deleteMany({
+      where: {
+        author_user_id: driver_user_id,
+        author_role: 'driver',
+        status: {
+          in: ['PRECREATED', 'PENDING'],
+        },
+      },
+    });
+
     // 2. Pre-crear reseñas para cada pasajero pagado
     for (const passenger of paidPassengers) {
       // Asegurar que el pasajero existe en nuestra base de datos local

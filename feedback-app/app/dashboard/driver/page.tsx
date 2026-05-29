@@ -1,7 +1,7 @@
 import { prisma } from "../../../lib/prisma"
 import Navbar from "../../components/NavBar"
 import { redirect } from "next/navigation"
-import { getCurrentUser } from "@/lib/current-user"
+import { getCurrentUser } from "../../../lib/current-user"
 import CompleteReviewForm from "../../components/CompleteReviewForm"
 import DriverSimulationControls from "../../components/DriverSimulationControls"
 import Link from "next/link"
@@ -18,14 +18,40 @@ type GroupedPendingTrip = {
   reviews: ReviewWithUsers[];
 }
 
-async function getDriverReviews(userId: string): Promise<ReviewWithUsers[]> {
+async function getLatestDriverSimulationPoolId(userId: string): Promise<string | null> {
+  const latestReview = await prisma.review.findFirst({
+    where: {
+      author_user_id: userId,
+      author_role: "driver",
+      status: {
+        in: ["PRECREATED", "PENDING"],
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    select: {
+      pool_id: true,
+    },
+  })
+
+  return latestReview?.pool_id ?? null
+}
+
+async function getDriverReviews(userId: string, poolId: string | null): Promise<ReviewWithUsers[]> {
   try {
     const reviews = await prisma.review.findMany({
       where: {
-        OR: [
-          { target_user_id: userId, status: "COMPLETED" },
-          { author_user_id: userId, author_role: "driver", status: "PENDING" }
-        ]
+        ...(poolId
+          ? {
+              pool_id: poolId,
+            }
+          : {
+              OR: [
+                { target_user_id: userId, status: "COMPLETED" },
+                { author_user_id: userId, author_role: "driver", status: "PENDING" },
+              ],
+            }),
       },
 
       include: {
@@ -79,7 +105,19 @@ export default async function DriverDashboard() {
     redirect("/dashboard")
   }
 
-  const reviews = await getDriverReviews(user.id)
+  const activePoolId = await getLatestDriverSimulationPoolId(user.id)
+
+  const [reviews, precreatedReviewsCount] = await Promise.all([
+    getDriverReviews(user.id, activePoolId),
+    prisma.review.count({
+      where: {
+        author_user_id: user.id,
+        author_role: "driver",
+        status: "PRECREATED",
+        ...(activePoolId ? { pool_id: activePoolId } : {}),
+      },
+    }),
+  ])
 
   const completedReviews = reviews.filter(
     (review) => review.status === "COMPLETED" && review.target_user_id === user.id
@@ -171,6 +209,18 @@ export default async function DriverDashboard() {
 
                   <p className="text-3xl font-black text-[var(--ws-midnight)]">
                     {pendingReviews.length}
+                  </p>
+
+                </div>
+
+                <div className="bg-[var(--ws-info-soft)] rounded-[12px] p-5 border border-[var(--ws-outline)]">
+
+                  <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
+                    Reseñas Precreadas
+                  </p>
+
+                  <p className="text-3xl font-black text-[var(--ws-midnight)]">
+                    {precreatedReviewsCount}
                   </p>
 
                 </div>
