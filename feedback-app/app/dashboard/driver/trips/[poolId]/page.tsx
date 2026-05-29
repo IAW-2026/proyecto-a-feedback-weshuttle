@@ -4,6 +4,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import Navbar from "../../../../components/NavBar"
+import PaginatedReviews from "../../../../components/PaginatedReviews"
 import { getCurrentUser } from "@/lib/current-user"
 import { prisma } from "../../../../../lib/prisma"
 
@@ -114,6 +115,19 @@ export default async function TripReviewsPage({
     reviews[0]?.completed_at ??
     reviews[0]?.createdAt
 
+  const reviewItems = reviews.map((review) => ({
+    id: review.id,
+    authorName: review.author?.name ?? "Pasajero",
+    reservationId: review.reservation_id,
+    rating: review.rating,
+    comment: review.comment,
+    dateLabel: formatTripDate(
+      review.completed_at ??
+      review.enabled_at ??
+      review.createdAt
+    ),
+  }))
+
   return (
 
     <div className="ws-page">
@@ -193,63 +207,7 @@ export default async function TripReviewsPage({
 
         {reviews.length > 0 ? (
 
-          <section className="space-y-5">
-
-            {reviews.map((review) => (
-
-              <article key={review.id} className="ws-card ws-card-large">
-
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
-
-                  <div>
-
-                    <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
-                      Pasajero
-                    </p>
-
-                    <h2 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
-                      {review.author?.name ?? "Pasajero"}
-                    </h2>
-
-                    {review.reservation_id && (
-
-                      <p className="text-sm text-[var(--ws-slate)] mt-2">
-                        Reserva {review.reservation_id}
-                      </p>
-
-                    )}
-
-                  </div>
-
-                  <div className="ws-pill ws-pill-info">
-
-                    {formatTripDate(
-                      review.completed_at ??
-                      review.enabled_at ??
-                      review.createdAt
-                    )}
-
-                  </div>
-
-                </div>
-
-                <div className="flex gap-1 text-3xl mb-5 text-[var(--ws-success)]">
-
-                  {"★".repeat(review.rating || 0)}
-
-                </div>
-
-                <p className="text-lg leading-relaxed text-[var(--ws-midnight)]">
-
-                  {review.comment || "Sin comentario registrado."}
-
-                </p>
-
-              </article>
-
-            ))}
-
-          </section>
+          <PaginatedReviews reviews={reviewItems} />
 
         ) : (
 
