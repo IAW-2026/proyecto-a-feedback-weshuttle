@@ -87,24 +87,24 @@ export default async function PassengerDashboard() {
       : "0.0"
 
   return (
-    <div className="min-h-screen bg-[#f6f6f6] text-black">
+    <div className="ws-page">
 
       <Navbar role={user.role} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="ws-container">
 
         {/* HERO */}
         <section className="mb-14">
 
-          <p className="text-sm text-neutral-500 mb-4">
+          <p className="text-sm text-[var(--ws-slate)] mb-4 font-semibold tracking-wide uppercase">
             WeShuttle Passenger Dashboard
           </p>
 
-          <h1 className="text-5xl sm:text-6xl font-black tracking-tight max-w-3xl leading-[0.95] mb-6">
+          <h1 className="text-[32px] sm:text-5xl font-black tracking-tight max-w-3xl leading-[0.95] mb-6 text-[var(--ws-midnight)]">
             Tu experiencia de viaje importa.
           </h1>
 
-          <p className="text-lg text-neutral-600 max-w-xl leading-relaxed">
+          <p className="text-lg text-[var(--ws-slate)] max-w-xl leading-relaxed">
             Ayudanos a mejorar cada viaje con una reseña rápida y sencilla.
           </p>
 
@@ -117,19 +117,19 @@ export default async function PassengerDashboard() {
           <div className="lg:col-span-5">
 
             {/* STATS */}
-            <div className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+            <div className="ws-card ws-card-large">
 
               <div className="mb-8">
 
-                <p className="text-sm text-neutral-500 mb-3">
+                <p className="text-sm text-[var(--ws-slate)] mb-3 font-semibold">
                   Estadísticas del pasajero
                 </p>
 
-                <h2 className="text-5xl font-black tracking-tight mb-3">
+                <h2 className="text-5xl font-black tracking-tight mb-3 text-[var(--ws-midnight)]">
                   {averageRating}★
                 </h2>
 
-                <p className="text-neutral-600 leading-relaxed">
+                <p className="text-[var(--ws-slate)] leading-relaxed">
                   Calificación promedio recibida por conductores.
                 </p>
 
@@ -137,25 +137,25 @@ export default async function PassengerDashboard() {
 
               <div className="space-y-4">
 
-                <div className="bg-[#f6f6f6] rounded-2xl p-5">
+                <div className="bg-[var(--ws-info-soft)] rounded-[12px] p-5 border border-[var(--ws-outline)]">
 
-                  <p className="text-sm text-neutral-500 mb-1">
+                  <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
                     Reseñas Recibidas
                   </p>
 
-                  <p className="text-3xl font-black">
+                  <p className="text-3xl font-black text-[var(--ws-midnight)]">
                     {completedReviews.length}
                   </p>
 
                 </div>
 
-                <div className="bg-[#f6f6f6] rounded-2xl p-5">
+                <div className="bg-[var(--ws-info-soft)] rounded-[12px] p-5 border border-[var(--ws-outline)]">
 
-                  <p className="text-sm text-neutral-500 mb-1">
+                  <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
                     Reseñas Pendientes
                   </p>
 
-                  <p className="text-3xl font-black">
+                  <p className="text-3xl font-black text-[var(--ws-midnight)]">
                     {pendingReviews.length}
                   </p>
 
@@ -171,7 +171,7 @@ export default async function PassengerDashboard() {
           <div className="lg:col-span-7">
 
             {/* HISTORIAL */}
-            <div className="mb-6 bg-[#0f172a] text-white rounded-[28px] p-8 shadow-lg">
+            <div className="mb-6 ws-panel-dark p-8">
 
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
 
@@ -193,7 +193,7 @@ export default async function PassengerDashboard() {
 
                 <Link
                   href="/dashboard/passenger/trips"
-                  className="inline-flex shrink-0 items-center justify-center rounded-full bg-white text-[#0f172a] px-8 py-4 text-sm font-black transition-all hover:bg-neutral-100 hover:scale-105 active:scale-95"
+                  className="inline-flex shrink-0 items-center justify-center rounded-[8px] bg-white text-[var(--ws-midnight)] px-8 py-4 text-sm font-black transition-all hover:bg-neutral-100 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   Ver mis viajes →
                 </Link>
@@ -207,7 +207,7 @@ export default async function PassengerDashboard() {
 
               <div className="mb-10">
 
-                <h2 className="text-3xl font-black tracking-tight mb-6">
+                <h2 className="text-3xl font-black tracking-tight mb-6 text-[var(--ws-midnight)]">
                   Reseñas Pendientes
                 </h2>
 
@@ -215,10 +215,7 @@ export default async function PassengerDashboard() {
 
                   {pendingReviews.map((review) => (
 
-                    <div
-                      key={review.id}
-                      className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
-                    >
+                    <div key={review.id} className="ws-card ws-card-large">
 
                       <div className="flex items-start justify-between mb-6">
 
@@ -234,13 +231,13 @@ export default async function PassengerDashboard() {
 
                         </div>
 
-                        <div className="bg-yellow-100 text-yellow-700 rounded-full px-4 py-2 text-sm font-bold">
+                        <div className="ws-pill ws-pill-warning">
                           Pending
                         </div>
 
                       </div>
 
-                      <p className="text-neutral-600 mb-6 leading-relaxed">
+                      <p className="text-[var(--ws-slate)] mb-6 leading-relaxed">
                         Tu viaje está esperando feedback. Evaluá tu experiencia y ayudá a mejorar futuros viajes.
                       </p>
 
@@ -261,7 +258,7 @@ export default async function PassengerDashboard() {
 
               <div>
 
-                <h2 className="text-3xl font-black tracking-tight mb-6">
+                <h2 className="text-3xl font-black tracking-tight mb-6 text-[var(--ws-midnight)]">
                   Feedback Recibido
                 </h2>
 
@@ -269,10 +266,7 @@ export default async function PassengerDashboard() {
 
                   {completedReviews.map((review) => (
 
-                    <div
-                      key={review.id}
-                      className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
-                    >
+                    <div key={review.id} className="ws-card ws-card-large">
 
                       <div className="flex items-start justify-between mb-6">
 
@@ -288,13 +282,13 @@ export default async function PassengerDashboard() {
 
                         </div>
 
-                        <div className="bg-green-100 text-green-700 rounded-full px-4 py-2 text-sm font-bold">
+                        <div className="ws-pill ws-pill-success">
                           Completed
                         </div>
 
                       </div>
 
-                      <div className="flex gap-1 text-3xl mb-5 text-green-600">
+                      <div className="flex gap-1 text-3xl mb-5 text-[var(--ws-success)]">
                         {"★".repeat(review.rating || 0)}
                       </div>
 
@@ -304,13 +298,13 @@ export default async function PassengerDashboard() {
                           Escrito por
                         </p>
 
-                        <p className="font-medium text-neutral-800">
+                        <p className="font-medium text-[var(--ws-midnight)]">
                           {review.author.name || review.author.id}
                         </p>
 
                       </div>
 
-                      <p className="text-neutral-700 text-lg leading-relaxed">
+                      <p className="text-[var(--ws-midnight)] text-lg leading-relaxed">
                         {review.comment}
                       </p>
 
@@ -328,17 +322,17 @@ export default async function PassengerDashboard() {
             {pendingReviews.length === 0 &&
               completedReviews.length === 0 && (
 
-              <div className="bg-white rounded-[28px] p-12 text-center border border-neutral-100">
+              <div className="ws-card ws-card-large text-center">
 
                 <p className="text-5xl mb-4">
                   ✈️
                 </p>
 
-                <h2 className="text-2xl font-black">
+                <h2 className="text-2xl font-black text-[var(--ws-midnight)]">
                   Todavía no hay actividad
                 </h2>
 
-                <p className="text-neutral-500 mt-2">
+                <p className="text-[var(--ws-slate)] mt-2">
                   Tus viajes y reseñas aparecerán acá una vez completados.
                 </p>
 

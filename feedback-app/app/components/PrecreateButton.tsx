@@ -31,19 +31,7 @@ export default function PrecreateButton({ userId }: Props) {
   return (
     <button
       onClick={handleClick}
-      className="
-      w-full
-      h-14
-      rounded-full
-      bg-blue-600
-      text-white
-      font-medium
-      text-[15px]
-      hover:bg-blue-700
-      transition-all
-      duration-200
-      cursor-pointer
-      "
+      className="ws-primary-button w-full cursor-pointer"
     >
       Empezar simulación de viaje
     </button>

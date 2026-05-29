@@ -40,7 +40,7 @@ export default function CompleteReviewForm({
 
       <div>
 
-        <p className="text-sm text-neutral-500 mb-4">
+        <p className="text-sm text-[var(--ws-slate)] mb-4 font-semibold">
           Calificá tu Viaje
         </p>
 
@@ -60,17 +60,7 @@ export default function CompleteReviewForm({
                 type="button"
                 onMouseEnter={() => setHoveredStar(star)}
                 onClick={() => setRating(star)}
-                className={`
-                  transition-all
-                  duration-150
-                  hover:scale-110
-                  cursor-pointer
-                  ${
-                    activeStar
-                      ? "text-green-600"
-                      : "text-neutral-300"
-                  }
-                `}
+                className={`transition-all duration-150 hover:scale-110 cursor-pointer ${activeStar ? "text-[var(--ws-success)]" : "text-slate-300"}`}
               >
                 ★
               </button>
@@ -87,36 +77,13 @@ export default function CompleteReviewForm({
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           placeholder="Contanos sobre tu experiencia..."
-          className="
-          w-full
-          min-h-[140px]
-          rounded-[24px]
-          bg-[#f6f6f6]
-          px-5
-          py-4
-          outline-none
-          resize-none
-          text-[15px]
-          placeholder:text-neutral-400
-          "
+          className="ws-textarea text-[15px] placeholder:text-slate-400"
         />
 
       </div>
 
       <button
-        className="
-        w-full
-        h-14
-        rounded-full
-        bg-blue-600
-        text-white
-        font-medium
-        text-[15px]
-        hover:bg-blue-700
-        transition-all
-        duration-200
-        cursor-pointer
-        "
+        className="ws-primary-button w-full cursor-pointer"
       >
         Enviar Feedback
       </button>

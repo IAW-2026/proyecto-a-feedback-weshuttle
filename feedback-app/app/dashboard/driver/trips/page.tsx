@@ -130,11 +130,11 @@ export default async function DriverTripsPage() {
 
   return (
 
-    <div className="min-h-screen bg-[#f6f6f6] text-black">
+    <div className="ws-page">
 
       <Navbar role={user.role} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="ws-container">
 
         {/* HERO */}
 
@@ -142,15 +142,15 @@ export default async function DriverTripsPage() {
 
           <div>
 
-            <p className="text-sm text-neutral-500 mb-4">
+            <p className="text-sm text-[var(--ws-slate)] mb-4 font-semibold tracking-wide uppercase">
               WeShuttle Driver Dashboard
             </p>
 
-            <h1 className="text-5xl sm:text-6xl font-black tracking-tight max-w-4xl leading-[0.95] mb-5">
+            <h1 className="text-[32px] sm:text-5xl font-black tracking-tight max-w-4xl leading-[0.95] mb-5 text-[var(--ws-midnight)]">
               Mis viajes.
             </h1>
 
-            <p className="text-lg text-neutral-600 max-w-2xl leading-relaxed">
+            <p className="text-lg text-[var(--ws-slate)] max-w-2xl leading-relaxed">
               Cada viaje contiene todas las reseñas asociadas a ese pool.
             </p>
 
@@ -158,7 +158,7 @@ export default async function DriverTripsPage() {
 
           <Link
             href="/dashboard/driver"
-            className="inline-flex items-center justify-center rounded-full bg-slate-900 text-white px-5 py-3 text-sm font-bold transition-colors hover:bg-slate-800"
+            className="ws-secondary-button"
           >
             Volver al dashboard
           </Link>
@@ -169,37 +169,37 @@ export default async function DriverTripsPage() {
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-8">
 
-          <div className="bg-white rounded-[28px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <div className="ws-card ws-card-pad">
 
-            <p className="text-sm text-neutral-500 mb-2">
+            <p className="text-sm text-[var(--ws-slate)] mb-2 font-semibold">
               Viajes con feedback
             </p>
 
-            <p className="text-4xl font-black tracking-tight">
+            <p className="text-4xl font-black tracking-tight text-[var(--ws-midnight)]">
               {totalTrips}
             </p>
 
           </div>
 
-          <div className="bg-white rounded-[28px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <div className="ws-card ws-card-pad">
 
-            <p className="text-sm text-neutral-500 mb-2">
+            <p className="text-sm text-[var(--ws-slate)] mb-2 font-semibold">
               Reseñas recibidas
             </p>
 
-            <p className="text-4xl font-black tracking-tight">
+            <p className="text-4xl font-black tracking-tight text-[var(--ws-midnight)]">
               {totalReviews}
             </p>
 
           </div>
 
-          <div className="bg-white rounded-[28px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <div className="ws-card ws-card-pad">
 
-            <p className="text-sm text-neutral-500 mb-2">
+            <p className="text-sm text-[var(--ws-slate)] mb-2 font-semibold">
               Promedio general
             </p>
 
-            <p className="text-4xl font-black tracking-tight">
+            <p className="text-4xl font-black tracking-tight text-[var(--ws-midnight)]">
               {averageRating}★
             </p>
 
@@ -231,7 +231,7 @@ export default async function DriverTripsPage() {
                   className="block"
                 >
 
-                  <article className="bg-white rounded-[28px] p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-neutral-100 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1">
+                  <article className="ws-card ws-card-large transition-all hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(10,25,47,0.1)]">
 
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
 
@@ -239,7 +239,7 @@ export default async function DriverTripsPage() {
 
                         <div className="flex items-center gap-3 mb-3">
 
-                          <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+                          <span className="ws-pill ws-pill-info uppercase tracking-wider">
                             Viaje #{groupedTrips.length - index}
                           </span>
 
@@ -247,17 +247,17 @@ export default async function DriverTripsPage() {
                             •
                           </span>
 
-                          <p className="text-sm text-neutral-500">
+                          <p className="text-sm text-[var(--ws-slate)]">
                             Pool ID: {trip.poolId}
                           </p>
 
                         </div>
 
-                        <h2 className="text-3xl font-black tracking-tight mb-3">
+                        <h2 className="text-3xl font-black tracking-tight mb-3 text-[var(--ws-midnight)]">
                           {formatTripKeyDate(trip.tripDate)}
                         </h2>
 
-                        <p className="text-neutral-600 leading-relaxed">
+                        <p className="text-[var(--ws-slate)] leading-relaxed"> 
                           Ver opiniones y feedback de pasajeros.
                         </p>
 
@@ -265,25 +265,25 @@ export default async function DriverTripsPage() {
 
                       <div className="flex gap-3">
 
-                        <div className="bg-[#f6f6f6] rounded-2xl px-5 py-4">
+                        <div className="bg-[var(--ws-info-soft)] rounded-[12px] px-5 py-4 border border-[var(--ws-outline)]">
 
-                          <p className="text-xs text-neutral-500 mb-1">
+                          <p className="text-xs text-[var(--ws-slate)] mb-1 font-semibold">
                             Reviews
                           </p>
 
-                          <p className="text-2xl font-black">
+                          <p className="text-2xl font-black text-[var(--ws-midnight)]">
                             {trip.reviews.length}
                           </p>
 
                         </div>
 
-                        <div className="bg-[#f6f6f6] rounded-2xl px-5 py-4">
+                        <div className="bg-[var(--ws-info-soft)] rounded-[12px] px-5 py-4 border border-[var(--ws-outline)]">
 
-                          <p className="text-xs text-neutral-500 mb-1">
+                          <p className="text-xs text-[var(--ws-slate)] mb-1 font-semibold">
                             Promedio
                           </p>
 
-                          <p className="text-2xl font-black text-green-600">
+                          <p className="text-2xl font-black text-[var(--ws-success)]">
                             {average}★
                           </p>
 
@@ -304,17 +304,17 @@ export default async function DriverTripsPage() {
 
         ) : (
 
-          <section className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <section className="ws-card ws-card-large">
 
-            <p className="text-sm text-neutral-500 mb-2">
+            <p className="text-sm text-[var(--ws-slate)] mb-2 font-semibold">
               Aún no hay viajes para mostrar
             </p>
 
-            <h2 className="text-3xl font-black tracking-tight mb-3">
+            <h2 className="text-3xl font-black tracking-tight mb-3 text-[var(--ws-midnight)]">
               Cuando lleguen reseñas, van a aparecer agrupadas acá.
             </h2>
 
-            <p className="text-neutral-600 leading-relaxed max-w-2xl">
+            <p className="text-[var(--ws-slate)] leading-relaxed max-w-2xl">
               Generá un viaje de prueba desde el dashboard.
             </p>
 

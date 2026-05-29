@@ -116,11 +116,11 @@ export default async function TripReviewsPage({
 
   return (
 
-    <div className="min-h-screen bg-[#f6f6f6] text-black">
+    <div className="ws-page">
 
       <Navbar role={user.role} />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="ws-container max-w-5xl">
 
         {/* HERO */}
 
@@ -128,23 +128,23 @@ export default async function TripReviewsPage({
 
           <div>
 
-            <p className="text-sm text-neutral-500 mb-4">
+            <p className="text-sm text-[var(--ws-slate)] mb-4 font-semibold tracking-wide uppercase">
               Opiniones del viaje
             </p>
 
-            <h1 className="text-5xl sm:text-6xl font-black tracking-tight leading-[0.95] mb-5">
+            <h1 className="text-[32px] sm:text-5xl font-black tracking-tight leading-[0.95] mb-5 text-[var(--ws-midnight)]">
 
               {tripDate
                 ? formatTripKeyDate(tripDate)
                 : "Viaje"}
 
-              <span className="block text-xl text-neutral-400 mt-2 font-medium">
+                <span className="block text-xl text-[var(--ws-slate)] mt-2 font-medium">
                 Pool: {poolId.slice(0, 8)}
               </span>
 
             </h1>
 
-            <p className="text-lg text-neutral-600 max-w-2xl leading-relaxed">
+            <p className="text-lg text-[var(--ws-slate)] max-w-2xl leading-relaxed">
               Feedback y reseñas de pasajeros de este viaje.
             </p>
 
@@ -152,7 +152,7 @@ export default async function TripReviewsPage({
 
           <Link
             href="/dashboard/driver/trips"
-            className="inline-flex items-center justify-center rounded-full bg-slate-900 text-white px-5 py-3 text-sm font-bold transition-colors hover:bg-slate-800"
+            className="ws-secondary-button"
           >
             Volver a viajes
           </Link>
@@ -163,25 +163,25 @@ export default async function TripReviewsPage({
 
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-10">
 
-          <div className="bg-white rounded-[28px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <div className="ws-card ws-card-pad">
 
-            <p className="text-sm text-neutral-500 mb-2">
+            <p className="text-sm text-[var(--ws-slate)] mb-2 font-semibold">
               Reseñas recibidas
             </p>
 
-            <p className="text-4xl font-black">
+            <p className="text-4xl font-black text-[var(--ws-midnight)]">
               {totalReviews}
             </p>
 
           </div>
 
-          <div className="bg-white rounded-[28px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <div className="ws-card ws-card-pad">
 
-            <p className="text-sm text-neutral-500 mb-2">
+            <p className="text-sm text-[var(--ws-slate)] mb-2 font-semibold">
               Promedio del viaje
             </p>
 
-            <p className="text-4xl font-black text-green-600">
+            <p className="text-4xl font-black text-[var(--ws-success)]">
               {averageRating}★
             </p>
 
@@ -197,26 +197,23 @@ export default async function TripReviewsPage({
 
             {reviews.map((review) => (
 
-              <article
-                key={review.id}
-                className="bg-white rounded-[28px] p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-neutral-100"
-              >
+              <article key={review.id} className="ws-card ws-card-large">
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
 
                   <div>
 
-                    <p className="text-sm text-neutral-500 mb-1">
+                    <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
                       Pasajero
                     </p>
 
-                    <h2 className="text-2xl font-black tracking-tight">
+                    <h2 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
                       {review.author?.name ?? "Pasajero"}
                     </h2>
 
                     {review.reservation_id && (
 
-                      <p className="text-sm text-neutral-500 mt-2">
+                      <p className="text-sm text-[var(--ws-slate)] mt-2">
                         Reserva {review.reservation_id}
                       </p>
 
@@ -224,7 +221,7 @@ export default async function TripReviewsPage({
 
                   </div>
 
-                  <div className="bg-[#f6f6f6] rounded-full px-4 py-2 text-sm font-semibold text-neutral-700">
+                  <div className="ws-pill ws-pill-info">
 
                     {formatTripDate(
                       review.completed_at ??
@@ -236,13 +233,13 @@ export default async function TripReviewsPage({
 
                 </div>
 
-                <div className="flex gap-1 text-3xl mb-5 text-green-600">
+                <div className="flex gap-1 text-3xl mb-5 text-[var(--ws-success)]">
 
                   {"★".repeat(review.rating || 0)}
 
                 </div>
 
-                <p className="text-lg leading-relaxed text-neutral-700">
+                <p className="text-lg leading-relaxed text-[var(--ws-midnight)]">
 
                   {review.comment || "Sin comentario registrado."}
 
@@ -256,13 +253,13 @@ export default async function TripReviewsPage({
 
         ) : (
 
-          <section className="bg-white rounded-[28px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <section className="ws-card ws-card-large">
 
-            <p className="text-sm text-neutral-500 mb-2">
+            <p className="text-sm text-[var(--ws-slate)] mb-2 font-semibold">
               Este viaje todavía no tiene reseñas.
             </p>
 
-            <h2 className="text-3xl font-black tracking-tight mb-3">
+            <h2 className="text-3xl font-black tracking-tight mb-3 text-[var(--ws-midnight)]">
               Cuando los pasajeros completen feedback, va a aparecer acá.
             </h2>
 

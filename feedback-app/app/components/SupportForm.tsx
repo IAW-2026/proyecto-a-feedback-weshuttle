@@ -1,19 +1,19 @@
 export default function SupportForm() {
   return (
-    <div className="bg-white p-6 border border-gray-300">
+    <div className="ws-card ws-card-large">
 
-      <h2 className="text-2xl font-bold mb-6">
+      <h2 className="text-2xl font-bold text-[var(--ws-midnight)] mb-6">
         Report an Issue
       </h2>
 
       <form className="space-y-4">
 
         <div>
-          <label className="block text-sm text-gray-500 mb-2">
+          <label className="block text-sm font-semibold text-[var(--ws-slate)] mb-2">
             Category
           </label>
 
-          <select className="w-full border border-gray-300 p-3">
+          <select className="ws-select">
             <option>Ride Experience</option>
             <option>Driver Behavior</option>
             <option>App Functionality</option>
@@ -21,17 +21,17 @@ export default function SupportForm() {
         </div>
 
         <div>
-          <label className="block text-sm text-gray-500 mb-2">
+          <label className="block text-sm font-semibold text-[var(--ws-slate)] mb-2">
             Details
           </label>
 
           <textarea
             rows={4}
-            className="w-full border border-gray-300 p-3"
+            className="ws-textarea"
           />
         </div>
 
-        <button className="w-full bg-blue-600 text-white p-3 font-semibold hover:bg-blue-700">
+        <button className="ws-primary-button w-full cursor-pointer">
           Submit Ticket
         </button>
 
