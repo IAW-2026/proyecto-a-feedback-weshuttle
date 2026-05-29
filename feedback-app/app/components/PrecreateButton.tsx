@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation"
 
 type Props = {
   userId: string
+  onStarted?: (poolId: string) => void
 }
 
-export default function PrecreateButton({ userId }: Props) {
+export default function PrecreateButton({ userId, onStarted }: Props) {
   const router = useRouter()
   
   async function handleClick() {
@@ -24,6 +25,14 @@ export default function PrecreateButton({ userId }: Props) {
     })
 
     if (response.ok) {
+      const data = await response.json()
+      if (data?.pool_id) {
+        	localStorage.setItem("ws:lastPoolId", data.pool_id)
+        	// mark that simulation was explicitly started by the user
+        	localStorage.setItem("ws:simulationStarted", "1")
+        onStarted?.(data.pool_id)
+      }
+
       router.refresh()
     }
   }

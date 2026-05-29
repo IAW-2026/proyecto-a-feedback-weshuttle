@@ -3,7 +3,7 @@ import Navbar from "../../components/NavBar"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/current-user"
 import CompleteReviewForm from "../../components/CompleteReviewForm"
-import PrecreateButton from "../../components/PrecreateButton"
+import DriverSimulationControls from "../../components/DriverSimulationControls"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
 
@@ -24,7 +24,7 @@ async function getDriverReviews(userId: string): Promise<ReviewWithUsers[]> {
       where: {
         OR: [
           { target_user_id: userId, status: "COMPLETED" },
-          { author_user_id: userId, author_role: "driver", status: { in: ["PENDING", "PRECREATED"] } }
+          { author_user_id: userId, author_role: "driver", status: "PENDING" }
         ]
       },
 
@@ -196,7 +196,7 @@ export default async function DriverDashboard() {
                 Por ahora usá este botón para generar formularios de feedback mutuos.
               </p>
 
-              <PrecreateButton userId={user.id} />
+              <DriverSimulationControls userId={user.id} />
 
             </div>
 

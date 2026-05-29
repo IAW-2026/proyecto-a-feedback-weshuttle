@@ -139,7 +139,7 @@ export async function POST(req: Request) {
           author_role: 'rider',
           target_user_id: driver_user_id,
           target_role: 'driver',
-          status: "PENDING",
+          status: "PRECREATED",
           enabled_at: new Date(),
         },
       });
@@ -154,7 +154,7 @@ export async function POST(req: Request) {
           author_role: 'driver',
           target_user_id: passenger.passenger_user_id,
           target_role: 'rider',
-          status: "PENDING",
+          status: "PRECREATED",
           enabled_at: new Date(),
         },
       });
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
     // 3. Devolver la respuesta según el contrato
     return NextResponse.json({
       pool_id,
-      review_status: 'PENDING',
+      review_status: 'PRECREATED',
       paid_passengers_count: paidPassengers.length,
       created_reviews: createdReviewsCount,
     }, { status: 201 });
