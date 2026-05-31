@@ -95,6 +95,17 @@ export async function POST(req: Request) {
           departure_time: '2026-06-10T08:00:00Z',
           max_price: 5000,
           effective_price: 3800,
+        },
+        {
+          reservation_id: 'res_105',
+          passenger_user_id: 'user_rider_005',
+          passenger_name: 'NPC 005',
+          reservation_status: 'PAID',
+          pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
+          destination_id: 'dest_polo_petroquimico',
+          departure_time: '2026-06-10T08:00:00Z',
+          max_price: 5000,
+          effective_price: 3800,
         }
       ],
     };

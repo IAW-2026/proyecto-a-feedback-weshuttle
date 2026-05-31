@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { getCurrentUser } from "../../../lib/current-user"
 import CompleteReviewForm from "../../components/CompleteReviewForm"
 import DriverSimulationControls from "../../components/DriverSimulationControls"
+import DriverPendingTripsAccordion from "../../components/DriverPendingTripsAccordion"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
 
@@ -16,6 +17,16 @@ type GroupedPendingTrip = {
   poolId: string;
   date: Date;
   reviews: ReviewWithUsers[];
+}
+
+type PendingTripAccordionGroup = {
+  poolId: string
+  date: string
+  reviews: {
+    id: string
+    recipientName: string | null
+    createdAt: string
+  }[]
 }
 
 async function getLatestDriverSimulationPoolId(userId: string): Promise<string | null> {
@@ -128,6 +139,16 @@ export default async function DriverDashboard() {
   )
 
   const groupedPending = groupPendingByTrip(pendingReviews);
+
+  const pendingTripAccordionGroups: PendingTripAccordionGroup[] = groupedPending.map((group) => ({
+    poolId: group.poolId,
+    date: group.date.toISOString(),
+    reviews: group.reviews.map((review) => ({
+      id: review.id,
+      recipientName: review.recipient.name,
+      createdAt: review.createdAt.toISOString(),
+    })),
+  }))
 
   const averageRating =
     completedReviews.length > 0
@@ -275,51 +296,16 @@ export default async function DriverDashboard() {
               </div>
             </div>
 
-            {groupedPending.length > 0 && (
+            {pendingTripAccordionGroups.length > 0 && (
               <div className="mb-10">
                 <h2 className="text-3xl font-black tracking-tight mb-6 text-[var(--ws-midnight)]">
                   Reseñas Pendientes de Pasajeros
                 </h2>
-                <div className="space-y-8">
-                  {groupedPending.map((group) => (
-                    <div key={group.poolId} className="ws-card overflow-hidden">
-                      {/* Encabezado del Grupo de Viaje */}
-                      <div className="bg-slate-50 px-8 py-4 border-b border-[var(--ws-outline)] flex justify-between items-center">
-                        <p className="text-xs font-bold text-[var(--ws-slate)] uppercase tracking-widest">
-                          Viaje Pool: {group.poolId.slice(0, 8)}...
-                        </p>
-                        <span className="text-xs text-[var(--ws-slate)] font-medium">
-                          {new Intl.DateTimeFormat("es-AR", { dateStyle: 'medium', timeStyle: 'short' }).format(group.date)}
-                        </span>
-                      </div>
-
-                      {/* Lista de formularios para este viaje */}
-                      <div className="p-4 space-y-4">
-                        {group.reviews.map((review) => (
-                          <div key={review.id} className="bg-white rounded-[12px] p-6 border border-[var(--ws-outline)]">
-                            <div className="flex items-start justify-between mb-6 gap-4">
-                              <div>
-                                <p className="text-sm text-[var(--ws-midnight)] font-bold">CALIFICAR A:</p>
-                                <h3 className="text-xl font-black tracking-tight text-[var(--ws-midnight)]">
-                                  {review.recipient.name || "Pasajero"}
-                                </h3>
-                              </div>
-
-                              <div className="ws-pill ws-pill-warning shrink-0">
-                                Pending
-                              </div>
-                            </div>
-                            <CompleteReviewForm reviewId={review.id} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <DriverPendingTripsAccordion trips={pendingTripAccordionGroups} />
               </div>
             )}
 
-            {groupedPending.length === 0 && (
+            {pendingTripAccordionGroups.length === 0 && (
               <div className="ws-card ws-card-large text-center">
                 <p className="text-5xl mb-4">🎉</p>
                 <h2 className="text-2xl font-black text-[var(--ws-midnight)]">¡Estás al día!</h2>
