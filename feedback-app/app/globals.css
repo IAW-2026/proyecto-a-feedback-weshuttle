@@ -193,4 +193,14 @@ body {
     color: #ffffff;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
+
+  /* Admin CRUD table interactive cursor helpers */
+  .admin-crud-table button,
+  .admin-crud-table a,
+  .admin-crud-table [role="button"],
+  .admin-crud-table .ws-primary-button,
+  .admin-crud-table .ws-secondary-button,
+  .admin-crud-table .ws-danger-button {
+    cursor: pointer;
+  }
 }
