@@ -12,6 +12,13 @@ type ManualReviewRequestBody = {
   comment?: string
 }
 
+type ExistingTripReview = {
+  author_role: string | null
+  target_role: string | null
+  author_user_id: string
+  target_user_id: string
+}
+
 function normalizeRole(role: "driver" | "rider") {
   return role === "driver" ? "DRIVER" : "PASSENGER"
 }
@@ -44,8 +51,8 @@ export async function POST(req: Request) {
     })
 
     const inferredDriver =
-      existingTripReviews.find((review) => review.author_role === "driver")?.author_user_id ??
-      existingTripReviews.find((review) => review.target_role === "driver")?.target_user_id ??
+      existingTripReviews.find((review: ExistingTripReview) => review.author_role === "driver")?.author_user_id ??
+      existingTripReviews.find((review: ExistingTripReview) => review.target_role === "driver")?.target_user_id ??
       null
 
     const authorUserId = user?.id ?? (body.author_role === "driver" ? inferredDriver : null)
