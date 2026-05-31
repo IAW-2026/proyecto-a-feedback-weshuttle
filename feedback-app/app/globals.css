@@ -83,6 +83,7 @@ body {
     font-size: 0.875rem;
     font-weight: 700;
     line-height: 1;
+    cursor: pointer;
     transition: background-color 150ms ease, transform 150ms ease, opacity 150ms ease;
   }
 
@@ -107,6 +108,7 @@ body {
     font-size: 0.875rem;
     font-weight: 700;
     line-height: 1;
+    cursor: pointer;
     transition: background-color 150ms ease, transform 150ms ease;
   }
 
@@ -192,6 +194,27 @@ body {
     background: var(--ws-midnight);
     color: #ffffff;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  .ws-danger-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    padding: 0 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--ws-outline);
+    background: #ffffff;
+    color: var(--ws-error);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 150ms ease, transform 150ms ease;
+  }
+
+  .ws-danger-button:hover {
+    background: #fff5f5;
   }
 
   /* Admin CRUD table interactive cursor helpers */
