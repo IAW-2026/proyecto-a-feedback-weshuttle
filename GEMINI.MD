@@ -2843,3 +2843,141 @@ En ambos casos, cada app debe verificar que la aplicación llamadora tenga permi
 | Fuente de verdad de datos operativos | Cada app según su dominio |
 | Estrategia de autorización | Validar JWT y rol en cada app |
 | Configuración importante | `company_code` debe incluirse explícitamente en el JWT Template o Session Claims |
+
+
+Entregables de la Etapa 1
+1.1 — Descripción del sistema
+Un documento que explique el sistema elegido en términos funcionales:
+
+¿Qué problema resuelve?
+¿Quiénes son los actores del sistema (usuarios finales de cada app, administradores)?
+¿Cuál es el flujo principal de uso? (ej: un pasajero solicita un viaje → un conductor lo acepta → se procesa el pago → ambos se califican)
+1.2 — Asignación de responsabilidades
+Un cuadro que indique claramente:
+
+Qué webapp desarrolla cada integrante.
+Qué datos son propios de cada app (en qué base de datos vive cada entidad).
+Qué datos o acciones requieren comunicación con otra app (y a través de qué API).
+1.3 — Diseño de APIs inter-servicios
+Para cada punto de integración entre aplicaciones, documentar:
+
+Endpoint: método HTTP y ruta (ej: POST /api/payments/charge)
+Request: qué datos envía el llamador
+Response: qué datos responde el servicio
+Quién llama a quién: qué app consume qué endpoint de qué otra app
+Este contrato de API debe estar acordado y firmado por todos los integrantes antes de comenzar la Etapa 2, ya que es la base sobre la que cada uno desarrollará de forma aislada.
+
+1.4 — Modelo de datos por aplicación
+Por cada webapp, un diagrama o descripción de las entidades principales de su base de datos (tablas, relaciones relevantes). No es necesario que sea un DER formal, pero sí que esté claro qué persiste cada app.
+
+Los datos integrados pueden contener duplicados —como en el caso de los usuarios, entre otros— por lo que es necesario identificar las posibles inconsistencias y definir una estrategia para resolverlas.
+
+1.5 — Usuarios compartidos
+El sistema utiliza Clerk como servicio centralizado de autenticación para todas las aplicaciones. Esto significa que los usuarios se autentican a través de Clerk independientemente de qué app estén usando, y la identidad se propaga entre servicios mediante el token JWT emitido por Clerk.
+
+En este punto, la comisión deberá definir:
+
+¿Qué apps comparten usuarios? (ej: en Uber, un rider puede acceder a las apps de pagos, feedback y promociones)
+¿Qué claims del token JWT son relevantes para cada app? (ej: roles, permisos, identificador de usuario compartido entre servicios)
+Etapa 2 — Implementación Individual
+Fecha de entrega: 1 de junio de 2026 Fechas de defensa: 4 y 8 de junio de 2026
+
+Objetivo
+Cada integrante desarrolla su webapp de forma completamente aislada, como si fuera un producto independiente. Al finalizar esta etapa, cada app debe funcionar por sí sola, con datos de prueba propios, sin depender del funcionamiento real de las otras apps.
+
+Las llamadas a APIs de otras webapps deben mockearse o simularse durante esta etapa. Lo importante es que los contratos definidos en la Etapa 1 estén respetados.
+
+Stack tecnológico
+Cada webapp deberá construirse con el siguiente stack tecnológico:
+
+Capa	Tecnología
+Frontend / Full-stack	Next.js
+Base de datos	PostgreSQL (base de datos propia por app)
+Autenticación	Clerk (servicio centralizado compartido por todas las apps)
+Pagos (solo la Payments App)	Mercado Pago en modo sandbox
+Estilos	Tailwind CSS, Chakra UI o Bootstrap
+ORM	Prisma, Knex, o pg directamente
+Deploy	Vercel (una instancia por app) + Railway / Supabase / Neon / Vercel Postgres
+Requisitos de cada webapp individual
+Cada webapp debe cumplir con los siguientes requisitos, adaptados a su dominio:
+
+✅ Páginas y componentes reutilizables en Next.js.
+
+✅ API propia — cada app expone sus propios endpoints REST (los cuales están pensados para las otras apps en la Etapa 3, pero pueden ser utilizados por su frontend de ser necesario).
+
+✅ Base de datos PostgreSQL propia — cada app es dueña de sus datos.
+
+✅ Autenticación — login/logout para usuarios administradores (obligatorio). Login para usuarios finales según corresponda al dominio de la app.
+
+✅ Panel de administración — el usuario administrador debe poder gestionar los datos principales de la app y visualizar al menos un listado o reporte relevante.
+
+✅ Búsqueda y paginación — donde aplique, implementar búsqueda y paginación con parámetros en la URL.
+
+✅ Manejo de errores — errores generales y páginas 404.
+
+✅ Validación de formularios del lado del servidor.
+
+✅ Accesibilidad — aplicar buenas prácticas básicas.
+
+✅ Consumo de al menos una API externa — integrar un servicio externo que aporte valor al dominio de la app. Debe hacerse un request real y procesarse la respuesta (no embeds). Las APIs de las otras webapps del mismo proyecto cuentan como externas a los fines de este requisito.
+
+✅ Integración con Mercado Pago (solo para la Payments App) — flujo de pago en modo sandbox.
+
+✅ Opcional — IA — se puede incorporar funcionalidad basada en inteligencia artificial (sugerencias, chatbot, descripciones automáticas, etc.). No es obligatorio, pero suma.
+
+Variables de entorno y secretos
+Cada app utiliza credenciales sensibles que nunca deben commitearse al repositorio: connection strings de la base de datos, claves de Clerk, credenciales de Mercado Pago, claves de APIs externas, etc.
+
+Usar un archivo .env.local para las variables de entorno en desarrollo local. Este archivo debe estar incluido en el .gitignore.
+En Vercel, configurar esas mismas variables desde el panel de configuración del proyecto (Settings → Environment Variables).
+Incluir en el repositorio un archivo .env.example con los nombres de las variables necesarias pero sin sus valores, para que cualquiera que clone el repo sepa qué configurar.
+Nota sobre el aislamiento
+Durante esta etapa, las apps no necesitan estar conectadas entre sí. Cada integrante trabaja en su propio repositorio, con su propio deploy. Si una app necesita datos de otra (ej: la Rider App necesita saber si un conductor está disponible), debe usar datos mockeados o un stub del endpoint esperado.
+
+Entregables de la Etapa 2
+Cada integrante deberá entregar, de acuerdo a la webapp que le fue asignada en la Etapa 1:
+
+Aplicación web funcional — la webapp correspondiente, deployada en Vercel y accesible mediante un link de producción.
+Código fuente completo — todo el código disponible en el repositorio designado para esa app, con historial de commits que refleje el desarrollo individual.
+Datos cargados — la aplicación no puede estar vacía. Debe contar con datos relevantes precargados que permitan evaluarla sin necesidad de cargar información manualmente (ej: viajes realizados, pedidos en distintos estados, productos publicados, transacciones procesadas, reseñas cargadas).
+README — breve y conciso, debe incluir: descripción de la app, link al deploy, y credenciales o instrucciones para acceder con cada tipo de usuario disponible (ej: administrador, usuario final). No debe ser extenso.
+Etapa 3 — Integración y Aplicaciones Globales
+Fecha de entrega: 25 de Junio de 2026
+Fechas de defensa: 29 de Junio de 2026 y 2 de Julio de 2026
+
+Objetivo
+En esta etapa, las aplicaciones individuales se conectan entre sí y la comisión desarrolla dos aplicaciones transversales que operan sobre el sistema completo.
+
+3.1 — Integración entre webapps
+Reemplazar los mocks de la Etapa 2 por llamadas reales a los endpoints de las otras apps, respetando los contratos definidos en la Etapa 1. Se espera que al menos los flujos principales del sistema funcionen de punta a punta.
+
+Ejemplos de flujos integrados:
+
+Uber: un pasajero solicita un viaje (Rider App) → un conductor lo acepta (Driver App) → al finalizar, se cobra el pago (Payments App) → ambos se califican (Feedback App).
+Delivery: un comprador hace un pedido (Buyer App) → el vendedor lo confirma (Seller App) → un repartidor lo retira y entrega (Delivery App) → se procesa el pago (Payments App).
+Marketplace: un comprador compra un producto (Buyer App) → el vendedor lo despacha (Seller App) → el operador gestiona el envío (Shipping App) → el pago se acredita al vendedor (Payments App).
+3.2 — Control Plane
+Una nueva webapp (desarrollada de forma colaborativa por la comisión) que actúa como panel de administración global del sistema. Permite a un superadministrador operar sobre todas las apps desde un único lugar.
+
+Funcionalidades esperadas:
+
+Visión consolidada de las entidades principales de cada app (usuarios, transacciones, pedidos, etc.).
+Acciones de gestión sobre cualquiera de las apps: activar/desactivar usuarios, resolver disputas, gestionar configuraciones globales.
+Comunicación con las APIs de cada webapp individual.
+No reemplaza los paneles de administración individuales de cada app, sino que los complementa con una vista de mayor nivel.
+
+3.3 — Analytics Dashboard
+Una segunda webapp nueva (también colaborativa) que presenta métricas y reportes sobre el sistema completo.
+
+Funcionalidades esperadas:
+
+Indicadores clave del negocio: volumen de transacciones, usuarios activos, pedidos completados, ingresos, calificaciones promedio, etc.
+Visualizaciones (tablas, gráficos o indicadores) que permitan entender el estado del sistema de un vistazo.
+Datos consolidados obtenidos consultando las APIs de las webapps individuales.
+El Analytics Dashboard no es un CRUD — es una herramienta de lectura y análisis. La complejidad está en consolidar datos de múltiples fuentes y presentarlos de manera útil.
+
+Entregables de la Etapa 3
+Control Plane y Analytics Dashboard — ambas aplicaciones deployadas en Vercel, con código completo en sus respectivos repositorios y un README breve con link al deploy e instrucciones para acceder con cada tipo de usuario.
+Aplicaciones individuales integradas — las webapps de la Etapa 2 debidamente conectadas entre sí, con los mocks reemplazados por llamadas reales, de forma que al menos los flujos principales del sistema funcionen de punta a punta.
+Datos cargados — el sistema completo debe contar con datos relevantes precargados que permitan recorrerlo y evaluarlo sin necesidad de cargar información manualmente (ej: viajes realizados, pedidos en distintos estados, transacciones procesadas).
+Al menos un flujo de punta a punta demostrable en la defensa.
