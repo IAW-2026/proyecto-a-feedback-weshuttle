@@ -130,23 +130,10 @@ export default function AdminReviewsTable({ initialReviews }: { initialReviews: 
                 </td>
               </tr>
             ))}
-          <tbody>
-            {(() => {
-              const order: Record<string, number> = { COMPLETED: 0, PENDING: 1, PRECREATED: 2 }
-              const sorted = [...reviews].sort((a, b) => {
-                const oa = order[a.status] ?? 99
-                const ob = order[b.status] ?? 99
-                if (oa !== ob) return oa - ob
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              })
-              return sorted.map((r) => (
-                <tr key={r.id} className="border-t last:border-b">
-                
-                
-                
-                ))
-            })()}
-            
+          </tbody>
+        </table>
+      </div>
+
       {modalOpen && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg max-w-2xl w-full p-6">
