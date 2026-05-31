@@ -5,9 +5,10 @@ import { useUser, UserButton } from "@clerk/nextjs"
 
 interface NavbarProps {
   role?: string;
+  displayName?: string | null;
 }
 
-export default function Navbar({ role }: NavbarProps) {
+export default function Navbar({ role, displayName }: NavbarProps) {
 
   const { user, isSignedIn } = useUser()
 
@@ -37,7 +38,7 @@ export default function Navbar({ role }: NavbarProps) {
             <div className="text-right">
 
               <p className="text-sm font-bold text-[var(--ws-midnight)]">
-                {user.firstName}
+                {displayName?.trim() || user.firstName || "Usuario"}
               </p>
 
               <p className="text-xs text-[var(--ws-slate)]">

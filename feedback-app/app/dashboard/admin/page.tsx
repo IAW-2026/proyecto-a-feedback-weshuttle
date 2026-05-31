@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { getCurrentUser } from "../../../lib/current-user"
 import AdminReviewsTable from "../../components/AdminReviewsTable"
 import { Prisma } from "@prisma/client"
+import ProfileNameEditor from "../../components/ProfileNameEditor"
 
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
   include: { author: true; recipient: true }
@@ -36,19 +37,23 @@ export default async function AdminDashboard() {
 
   return (
     <div className="ws-page">
-      <Navbar role={user.role} />
+      <Navbar role={user.role} displayName={user.name} />
 
       <main className="ws-container max-w-7xl mx-auto">
-        <section className="mb-14">
-          <p className="text-sm text-[var(--ws-slate)] mb-4 font-semibold tracking-wide uppercase">
-            WeShuttle Admin
-          </p>
-          <h1 className="text-4xl font-black tracking-tight mb-6 text-[var(--ws-midnight)]">
-            Panel de administración — Reseñas
-          </h1>
-          <p className="text-[var(--ws-slate)] max-w-xl leading-relaxed">
-            Gestioná las reseñas de pasajeros y conductores: ver, editar y eliminar.
-          </p>
+        <section className="mb-14 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-sm text-[var(--ws-slate)] mb-4 font-semibold tracking-wide uppercase">
+              WeShuttle Admin
+            </p>
+            <h1 className="text-4xl font-black tracking-tight mb-6 text-[var(--ws-midnight)]">
+              Panel de administración — Reseñas
+            </h1>
+            <p className="text-[var(--ws-slate)] max-w-xl leading-relaxed">
+              Gestioná las reseñas de pasajeros y conductores: ver, editar y eliminar.
+            </p>
+          </div>
+
+          <ProfileNameEditor initialName={user.name} />
         </section>
 
         {/* STATISTICS ABOVE TABLE */}

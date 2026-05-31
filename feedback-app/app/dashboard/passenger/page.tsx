@@ -5,6 +5,7 @@ import CompleteReviewForm from "../../components/CompleteReviewForm"
 import { getCurrentUser } from "@/lib/current-user"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
+import ProfileNameEditor from "../../components/ProfileNameEditor"
 
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
   include: { author: true; recipient: true }
@@ -89,24 +90,30 @@ export default async function PassengerDashboard() {
   return (
     <div className="ws-page">
 
-      <Navbar role={user.role} />
+      <Navbar role={user.role} displayName={user.name} />
 
       <main className="ws-container">
 
         {/* HERO */}
-        <section className="mb-14">
+        <section className="mb-14 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
 
-          <p className="text-sm text-[var(--ws-slate)] mb-4 font-semibold tracking-wide uppercase">
-            WeShuttle Passenger Dashboard
-          </p>
+          <div className="max-w-3xl">
 
-          <h1 className="text-[32px] sm:text-5xl font-black tracking-tight max-w-3xl leading-[0.95] mb-6 text-[var(--ws-midnight)]">
-            Tu experiencia de viaje importa.
-          </h1>
+            <p className="text-sm text-[var(--ws-slate)] mb-4 font-semibold tracking-wide uppercase">
+              WeShuttle Passenger Dashboard
+            </p>
 
-          <p className="text-lg text-[var(--ws-slate)] max-w-xl leading-relaxed">
-            Ayudanos a mejorar cada viaje con una reseña rápida y sencilla.
-          </p>
+            <h1 className="text-[32px] sm:text-5xl font-black tracking-tight max-w-3xl leading-[0.95] mb-6 text-[var(--ws-midnight)]">
+              Tu experiencia de viaje importa.
+            </h1>
+
+            <p className="text-lg text-[var(--ws-slate)] max-w-xl leading-relaxed">
+              Ayudanos a mejorar cada viaje con una reseña rápida y sencilla.
+            </p>
+
+          </div>
+
+          <ProfileNameEditor initialName={user.name} />
 
         </section>
 

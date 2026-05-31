@@ -19,11 +19,14 @@ export async function getCurrentUser() {
   const existing = await prisma.user.findUnique({ where: { id: clerkUser.id } })
 
   if (existing) {
-    const updated = await prisma.user.update({
-      where: { id: clerkUser.id },
-      data: { name: fullName || null },
-    })
-    return updated
+    if (!existing.name && fullName) {
+      return await prisma.user.update({
+        where: { id: clerkUser.id },
+        data: { name: fullName },
+      })
+    }
+
+    return existing
   }
 
   // No existe en DB: creamos usando el role inferido desde Clerk metadata.

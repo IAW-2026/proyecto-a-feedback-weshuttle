@@ -132,7 +132,7 @@ export default async function DriverTripsPage() {
 
     <div className="ws-page">
 
-      <Navbar role={user.role} />
+      <Navbar role={user.role} displayName={user.name} />
 
       <main className="ws-container">
 
