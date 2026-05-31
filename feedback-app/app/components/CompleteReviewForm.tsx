@@ -11,11 +11,19 @@ export default function CompleteReviewForm({
 
   const [comment, setComment] = useState("")
   const [rating, setRating] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const [hoveredStar, setHoveredStar] = useState(0)
   const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    if (rating === 0) {
+      setError("Seleccioná una cantidad de estrellas antes de enviar")
+      return
+    }
+
+    setError(null)
 
     const response = await fetch(`/api/reviews/${reviewId}`, {
       method: "PATCH",
@@ -82,8 +90,14 @@ export default function CompleteReviewForm({
 
       </div>
 
+      {error && (
+        <p className="text-sm text-red-600 mb-2">{error}</p>
+      )}
+
       <button
         className="ws-primary-button w-full cursor-pointer"
+        type="submit"
+        disabled={rating === 0}
       >
         Enviar Feedback
       </button>
