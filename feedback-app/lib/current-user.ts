@@ -10,21 +10,28 @@ export async function getCurrentUser() {
 
   const fullName = `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim()
 
-  // Mapeamos el rol de Clerk a nuestro Enum de Prisma
-  const clerkRole = (clerkUser.publicMetadata.role as string)?.toUpperCase()
-  const role = clerkRole === "DRIVER" ? "DRIVER" : clerkRole === "ADMIN" ? "ADMIN" : "PASSENGER"
+  // Preferimos el role ya presente en la base de datos (por si fue seteado manualmente).
+  // Solo usamos el publicMetadata de Clerk para crear el usuario inicial si no existe.
+  const clerkRole = (clerkUser.publicMetadata.role as string | undefined)?.toUpperCase()
+  const inferredRole = clerkRole === "DRIVER" ? "DRIVER" : clerkRole === "ADMIN" ? "ADMIN" : "PASSENGER"
 
-  const user = await prisma.user.upsert({
-    where: {
+  // Si el usuario ya existe en DB, respetamos su role y solo actualizamos el nombre.
+  const existing = await prisma.user.findUnique({ where: { id: clerkUser.id } })
+
+  if (existing) {
+    const updated = await prisma.user.update({
+      where: { id: clerkUser.id },
+      data: { name: fullName || null },
+    })
+    return updated
+  }
+
+  // No existe en DB: creamos usando el role inferido desde Clerk metadata.
+  const user = await prisma.user.create({
+    data: {
       id: clerkUser.id,
-    },
-    update: {
       name: fullName || null,
-    },
-    create: {
-      id: clerkUser.id,
-      name: fullName || null,
-      role: role,
+      role: inferredRole,
     },
   })
 
