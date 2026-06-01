@@ -47,15 +47,15 @@ export async function POST(req: Request) {
     // const riderAppData: MockRiderAppPassengersResponse = await riderAppResponse.json();
 
     // Datos mockeados para simular la respuesta de la Rider App
-    // CONSEJO PARA ETAPA 3: Aquí es donde cambiarás este objeto por el fetch real.
+    // ETAPA 3: Aquí es donde cambiaré este objeto por el fetch real.
     const mockRiderAppData: MockRiderAppPassengersResponse = {
       pool_id: pool_id,
       passengers: [
         {
           reservation_id: 'res_101',
-          // Usando el ID de pasajero real proporcionado para testing
-          passenger_user_id: 'user_3Dwjs2tNYWJq2r3WfN06m9gm533', 
-          passenger_name: 'Juan Sebastian BASSI',
+          // Usando el ID de rider+clerk_test proporcionado para testing
+          passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P', 
+          passenger_name: 'Pasajero (Usuario de Clerk)',
           reservation_status: 'PAID',
           pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
           destination_id: 'dest_polo_petroquimico',
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
         {
           reservation_id: 'res_102',
           passenger_user_id: 'user_rider_002',
-          passenger_name: 'Juan Ignacio Ibarra',
+          passenger_name: 'Pasajero de Prueba 2',
           reservation_status: 'PAID',
           pickup_point: { address: 'Sarmiento 850', lat: -38.713, lng: -62.261 },
           destination_id: 'dest_polo_petroquimico',
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
         {
           reservation_id: 'res_103',
           passenger_user_id: 'user_rider_001',
-          passenger_name: 'NPC 001',
+          passenger_name: 'Pasajero de Prueba 3',
           reservation_status: 'PAID',
           pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
           destination_id: 'dest_polo_petroquimico',
@@ -87,8 +87,8 @@ export async function POST(req: Request) {
         },
         {
           reservation_id: 'res_104',
-          passenger_user_id: 'user_3EJohyoiSblh2utnRB6SrnhumBH', // Otro ID de usuario de Clerk
-          passenger_name: 'John Sebastien',
+          passenger_user_id: 'user_rider_004', 
+          passenger_name: 'Pasajero de Prueba 4',
           reservation_status: 'PAID',
           pickup_point: { address: 'Sarmiento 900', lat: -38.703, lng: -62.201 },
           destination_id: 'dest_polo_petroquimico',
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
         {
           reservation_id: 'res_105',
           passenger_user_id: 'user_rider_005',
-          passenger_name: 'NPC 005',
+          passenger_name: 'Pasajero de Prueba 5',
           reservation_status: 'PAID',
           pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
           destination_id: 'dest_polo_petroquimico',
