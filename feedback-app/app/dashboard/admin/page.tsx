@@ -66,7 +66,7 @@ export default async function AdminDashboard() {
               Panel de administración — Reseñas
             </h1>
             <p className="text-[var(--ws-slate)] max-w-xl leading-relaxed">
-              Gestioná las reseñas de pasajeros y conductores: ver, editar y eliminar.
+              Gestioná las reseñas de pasajeros y conductores: crear, ver, editar y eliminar.
             </p>
           </div>
 
