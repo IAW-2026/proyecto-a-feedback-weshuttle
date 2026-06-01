@@ -5,10 +5,27 @@ import { getCurrentUser } from "../../../lib/current-user"
 import AdminReviewsTable from "../../components/AdminReviewsTable"
 import { Prisma } from "@prisma/client"
 import ProfileNameEditor from "../../components/ProfileNameEditor"
+import { createAdminReview, type CreateAdminReviewInput } from "@/lib/reviews/admin-create-review"
 
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
   include: { author: true; recipient: true }
 }>
+
+async function createAdminReviewAction(input: CreateAdminReviewInput) {
+  "use server"
+
+  const user = await getCurrentUser()
+
+  if (!user) {
+    throw new Error("UNAUTHORIZED")
+  }
+
+  if (user.role !== "ADMIN") {
+    throw new Error("FORBIDDEN")
+  }
+
+  return createAdminReview(input)
+}
 
 export default async function AdminDashboard() {
   const user = await getCurrentUser()
@@ -96,7 +113,7 @@ export default async function AdminDashboard() {
           <div className="ws-card ws-card-large w-full">
             <h3 className="text-xl font-black mb-4">Listado de reseñas</h3>
             <div className="w-full">
-              <AdminReviewsTable initialReviews={reviews} />
+              <AdminReviewsTable initialReviews={reviews} createReviewAction={createAdminReviewAction} />
             </div>
           </div>
         </section>

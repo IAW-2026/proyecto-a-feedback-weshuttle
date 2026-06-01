@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import type { CreateAdminReviewInput, CreatedAdminReview } from "@/lib/reviews/admin-create-review"
 
 type User = {
   id: string
@@ -158,7 +159,12 @@ function groupReviewsByTrip(reviewsList: Review[]) {
   return Array.from(groups.values()).sort((a, b) => b.tripDate.getTime() - a.tripDate.getTime())
 }
 
-export default function AdminReviewsTable({ initialReviews }: { initialReviews: any[] }) {
+type Props = {
+  initialReviews: any[]
+  createReviewAction: (input: CreateAdminReviewInput) => Promise<CreatedAdminReview>
+}
+
+export default function AdminReviewsTable({ initialReviews, createReviewAction }: Props) {
   const [reviews, setReviews] = useState<Review[]>(initialReviews as Review[])
   const [modalOpen, setModalOpen] = useState(false)
   const [selected, setSelected] = useState<Review | null>(null)
@@ -260,39 +266,37 @@ export default function AdminReviewsTable({ initialReviews }: { initialReviews: 
       return
     }
 
-    setCreateSaving(true)
-    setCreateError(null)
-
     const reservationId =
       createMode === "DRIVER"
         ? target.reservationId
         : author.reservationId
 
-    const response = await fetch("/api/reviews", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    setCreateSaving(true)
+    setCreateError(null)
+
+    try {
+      const created = await createReviewAction({
         pool_id: createTrip.poolId,
         reservation_id: reservationId,
         author_user_id: author.id,
-        target_user_id: target.id,
         author_role: toReviewRole(author.role),
+        target_user_id: target.id,
         target_role: toReviewRole(target.role),
+        author_name: author.name,
+        target_name: target.name,
         rating: createRating,
         comment: createComment.trim() ? createComment.trim() : null,
         trip_date: createTrip.tripDate.toISOString(),
-      }),
-    })
+      })
 
-    if (response.ok) {
-      const created = await response.json()
       setReviews((cur) => [created, ...cur])
       closeCreateModal()
-      return
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo crear la reseña."
+      setCreateError(message)
+    } finally {
+      setCreateSaving(false)
     }
-
-    setCreateSaving(false)
-    setCreateError(await response.text())
   }
 
   const deleteReview = async (id: string) => {
