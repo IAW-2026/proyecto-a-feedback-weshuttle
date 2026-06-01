@@ -1,41 +1,86 @@
-// --> PATCH /reviews/:id
-// Una vez que el pasajero o conductor recibe la reseña "PRECREATED", 
-// puede completarla con calificación y comentario, lo que actualiza su estado a "COMPLETED" desde acá
 import { prisma } from "@/lib/prisma"
+import { getCurrentUser } from "@/lib/current-user"
 
-export async function PATCH(req: Request, context: any) {
-  const params = await context.params  // 👈 CLAVE
+type RouteContext = {
+  params: Promise<{ id?: string }>
+}
 
-  const body = await req.json()
+type PatchBody = {
+  rating?: number
+  comment?: string
+  admin?: boolean
+  status?: "PRECREATED" | "PENDING" | "COMPLETED"
+}
 
-  if (!params?.id) {
+function buildReviewUpdate(body: PatchBody) {
+  const updateData: {
+    rating?: number
+    comment?: string
+    status?: "PRECREATED" | "PENDING" | "COMPLETED"
+    completed_at?: Date
+  } = {}
+
+  if (typeof body.rating !== "undefined") {
+    updateData.rating = body.rating
+  }
+
+  if (typeof body.comment !== "undefined") {
+    updateData.comment = body.comment
+  }
+
+  if (body.admin) {
+    if (body.status) {
+      updateData.status = body.status
+
+      if (body.status === "COMPLETED") {
+        updateData.completed_at = new Date()
+      }
+    }
+
+    return updateData
+  }
+
+  updateData.status = "COMPLETED"
+  updateData.completed_at = new Date()
+
+  return updateData
+}
+
+export async function PATCH(req: Request, context: RouteContext) {
+  const { id } = await context.params
+
+  if (!id) {
     return new Response("Missing id", { status: 400 })
   }
 
+  let body: PatchBody
+
   try {
-    // Allow admin updates when `admin: true` is present in the body.
-    const updateData: any = {}
+    body = (await req.json()) as PatchBody
+  } catch {
+    return new Response("Invalid JSON body", { status: 400 })
+  }
 
-    if (typeof body.rating !== "undefined") updateData.rating = body.rating
-    if (typeof body.comment !== "undefined") updateData.comment = body.comment
+  if (typeof body.rating !== "undefined" && typeof body.rating !== "number") {
+    return new Response("Invalid rating", { status: 400 })
+  }
 
-    if (body.admin) {
-      // Admin can set arbitrary status
-      if (body.status) {
-        updateData.status = body.status
-        if (body.status === "COMPLETED") {
-          updateData.completed_at = new Date()
-        }
-      }
-    } else {
-      // Default client behavior: completing the review
-      updateData.status = "COMPLETED"
-      updateData.completed_at = new Date()
+  if (typeof body.comment !== "undefined" && typeof body.comment !== "string") {
+    return new Response("Invalid comment", { status: 400 })
+  }
+
+  if (body.admin) {
+    const currentUser = await getCurrentUser()
+
+    if (!currentUser || currentUser.role !== "ADMIN") {
+      return new Response("Forbidden", { status: 403 })
     }
+  }
 
+  try {
     const review = await prisma.review.update({
-      where: { id: params.id },
-      data: updateData,
+      where: { id },
+      data: buildReviewUpdate(body),
     })
 
     return Response.json(review)
@@ -45,15 +90,21 @@ export async function PATCH(req: Request, context: any) {
   }
 }
 
-export async function DELETE(req: Request, context: any) {
-  const params = await context.params
+export async function DELETE(req: Request, context: RouteContext) {
+  const { id } = await context.params
 
-  if (!params?.id) {
+  if (!id) {
     return new Response("Missing id", { status: 400 })
   }
 
+  const currentUser = await getCurrentUser()
+
+  if (!currentUser || currentUser.role !== "ADMIN") {
+    return new Response("Forbidden", { status: 403 })
+  }
+
   try {
-    await prisma.review.delete({ where: { id: params.id } })
+    await prisma.review.delete({ where: { id } })
     return new Response(null, { status: 204 })
   } catch (error) {
     console.error("PRISMA DELETE ERROR:", error)
