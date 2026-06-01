@@ -69,11 +69,38 @@ export async function PATCH(req: Request, context: RouteContext) {
     return new Response("Invalid comment", { status: 400 })
   }
 
+  const existingReview = await prisma.review.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      author_user_id: true,
+      status: true,
+    },
+  })
+
+  if (!existingReview) {
+    return new Response("Review not found", { status: 404 })
+  }
+
   if (body.admin) {
     const currentUser = await getCurrentUser()
 
     if (!currentUser || currentUser.role !== "ADMIN") {
       return new Response("Forbidden", { status: 403 })
+    }
+  } else {
+    const currentUser = await getCurrentUser()
+
+    if (!currentUser) {
+      return new Response("Unauthorized", { status: 401 })
+    }
+
+    if (currentUser.id !== existingReview.author_user_id) {
+      return new Response("Forbidden", { status: 403 })
+    }
+
+    if (existingReview.status === "COMPLETED") {
+      return new Response("Review already completed", { status: 409 })
     }
   }
 
