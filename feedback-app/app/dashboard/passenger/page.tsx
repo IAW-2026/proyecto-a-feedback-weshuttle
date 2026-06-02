@@ -1,0 +1,358 @@
+import { prisma } from "../../../lib/prisma"
+import Navbar from "../../components/NavBar"
+import { redirect } from "next/navigation"
+import CompleteReviewForm from "../../components/CompleteReviewForm"
+import { getCurrentUser } from "@/lib/current-user"
+import Link from "next/link"
+import { Prisma } from "@prisma/client"
+import ProfileNameEditor from "../../components/ProfileNameEditor"
+
+type ReviewWithUsers = Prisma.ReviewGetPayload<{
+  include: { author: true; recipient: true }
+}>
+
+async function getReviews(userId: string): Promise<ReviewWithUsers[]> {
+  try {
+
+    const reviews = await prisma.review.findMany({
+      where: {
+        OR: [
+          // Reviews pendientes que el pasajero tiene que completar
+          {
+            author_user_id: userId,
+            author_role: "rider",
+            status: "PENDING"
+          },
+
+          // Reviews recibidas por el pasajero
+          {
+            target_user_id: userId,
+            target_role: "rider",
+            status: "COMPLETED"
+          }
+        ]
+      },
+
+      include: {
+        author: true,
+        recipient: true,
+      },
+
+      orderBy: {
+        createdAt: "desc",
+      },
+    })
+
+    return reviews
+
+  } catch (error) {
+    console.error(error)
+    return []
+  }
+}
+
+export default async function PassengerDashboard() {
+
+  const user = await getCurrentUser()
+
+  if (!user) {
+    redirect("/sign-in")
+  }
+
+  if (user.role !== "PASSENGER") {
+    redirect("/dashboard")
+  }
+
+  const reviews = await getReviews(user.id)
+
+  const completedReviews = reviews.filter(
+    (review) =>
+      review.status === "COMPLETED" &&
+      review.target_user_id === user.id
+  )
+
+  const pendingReviews = reviews.filter(
+    (review) =>
+      review.status === "PENDING" &&
+      review.author_user_id === user.id
+  )
+
+  const averageRating =
+    completedReviews.length > 0
+      ? (
+          completedReviews.reduce(
+            (acc, review) => acc + (review.rating || 0),
+            0
+          ) / completedReviews.length
+        ).toFixed(1)
+      : "0.0"
+
+  return (
+    <div className="ws-page">
+
+      <Navbar role={user.role} displayName={user.name} />
+
+      <main className="ws-container">
+
+        {/* HERO */}
+        <section className="mb-14 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+
+          <div className="max-w-3xl">
+
+            <p className="text-sm text-[var(--ws-slate)] mb-4 font-semibold tracking-wide uppercase">
+              WeShuttle Passenger Dashboard
+            </p>
+
+            <h1 className="text-[32px] sm:text-5xl font-black tracking-tight max-w-3xl leading-[0.95] mb-6 text-[var(--ws-midnight)]">
+              Tu experiencia de viaje importa.
+            </h1>
+
+            <p className="text-lg text-[var(--ws-slate)] max-w-xl leading-relaxed">
+              Ayudanos a mejorar cada viaje con una reseña rápida y sencilla.
+            </p>
+
+          </div>
+
+          <ProfileNameEditor initialName={user.name} />
+
+        </section>
+
+        {/* MAIN GRID */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+          {/* LEFT */}
+          <div className="lg:col-span-5">
+
+            {/* STATS */}
+            <div className="ws-card ws-card-large">
+
+              <div className="mb-8">
+
+                <p className="text-sm text-[var(--ws-slate)] mb-3 font-semibold">
+                  Estadísticas del pasajero
+                </p>
+
+                <h2 className="text-5xl font-black tracking-tight mb-3 text-[var(--ws-midnight)]">
+                  {averageRating}★
+                </h2>
+
+                <p className="text-[var(--ws-slate)] leading-relaxed">
+                  Calificación promedio recibida por conductores.
+                </p>
+
+              </div>
+
+              <div className="space-y-4">
+
+                <div className="bg-[var(--ws-info-soft)] rounded-[12px] p-5 border border-[var(--ws-outline)]">
+
+                  <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
+                    Reseñas Recibidas
+                  </p>
+
+                  <p className="text-3xl font-black text-[var(--ws-midnight)]">
+                    {completedReviews.length}
+                  </p>
+
+                </div>
+
+                <div className="bg-[var(--ws-info-soft)] rounded-[12px] p-5 border border-[var(--ws-outline)]">
+
+                  <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
+                    Reseñas Pendientes
+                  </p>
+
+                  <p className="text-3xl font-black text-[var(--ws-midnight)]">
+                    {pendingReviews.length}
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* RIGHT */}
+          <div className="lg:col-span-7">
+
+            {/* HISTORIAL */}
+            <div className="mb-6 ws-panel-dark p-8">
+
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+
+                <div>
+
+                  <p className="text-sm text-white/60 mb-1 uppercase font-bold tracking-wider">
+                    Historial de Viajes
+                  </p>
+
+                  <h3 className="text-2xl font-black tracking-tight mb-2">
+                    Consultá tus viajes anteriores
+                  </h3>
+
+                  <p className="text-white/70 text-sm max-w-md leading-relaxed">
+                    Accedé a todas las reseñas recibidas por conductores y revisá tu actividad reciente.
+                  </p>
+
+                </div>
+
+                <Link
+                  href="/dashboard/passenger/trips"
+                  className="inline-flex shrink-0 items-center justify-center rounded-[8px] bg-white text-[var(--ws-midnight)] px-8 py-4 text-sm font-black transition-all hover:bg-neutral-100 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Ver mis viajes →
+                </Link>
+
+              </div>
+
+            </div>
+
+            {/* PENDING REVIEWS */}
+            {pendingReviews.length > 0 && (
+
+              <div className="mb-10">
+
+                <h2 className="text-3xl font-black tracking-tight mb-6 text-[var(--ws-midnight)]">
+                  Reseñas Pendientes
+                </h2>
+
+                <div className="space-y-5">
+
+                  {pendingReviews.map((review) => (
+
+                    <div key={review.id} className="ws-card ws-card-large">
+
+                      <div className="flex items-start justify-between mb-6">
+
+                        <div>
+
+                          <p className="text-sm text-neutral-500 mb-2">
+                            Viaje completado
+                          </p>
+
+                          <h3 className="text-2xl font-black tracking-tight">
+                            Feedback del viaje
+                          </h3>
+
+                        </div>
+
+                        <div className="ws-pill ws-pill-warning">
+                          Pending
+                        </div>
+
+                      </div>
+
+                      <p className="text-[var(--ws-slate)] mb-6 leading-relaxed">
+                        Tu viaje está esperando feedback. Evaluá tu experiencia y ayudá a mejorar futuros viajes.
+                      </p>
+
+                      <CompleteReviewForm reviewId={review.id} />
+
+                    </div>
+
+                  ))}
+
+                </div>
+
+              </div>
+
+            )}
+
+            {/* COMPLETED REVIEWS */}
+            {completedReviews.length > 0 && (
+
+              <div>
+
+                <h2 className="text-3xl font-black tracking-tight mb-6 text-[var(--ws-midnight)]">
+                  Feedback Recibido
+                </h2>
+
+                <div className="space-y-5">
+
+                  {completedReviews.map((review) => (
+
+                    <div key={review.id} className="ws-card ws-card-large">
+
+                      <div className="flex items-start justify-between mb-6">
+
+                        <div>
+
+                          <p className="text-sm text-neutral-500 mb-2">
+                            Reseña del conductor
+                          </p>
+
+                          <h3 className="text-2xl font-black tracking-tight">
+                            Experiencia del viaje
+                          </h3>
+
+                        </div>
+
+                        <div className="ws-pill ws-pill-success">
+                          Completed
+                        </div>
+
+                      </div>
+
+                      <div className="flex gap-1 text-3xl mb-5 text-[var(--ws-success)]">
+                        {"★".repeat(review.rating || 0)}
+                      </div>
+
+                      <div className="mb-4">
+
+                        <p className="text-sm text-neutral-500">
+                          Escrito por
+                        </p>
+
+                        <p className="font-medium text-[var(--ws-midnight)]">
+                          {review.author.name || review.author.id}
+                        </p>
+
+                      </div>
+
+                      <p className="text-[var(--ws-midnight)] text-lg leading-relaxed">
+                        {review.comment}
+                      </p>
+
+                    </div>
+
+                  ))}
+
+                </div>
+
+              </div>
+
+            )}
+
+            {/* EMPTY STATE */}
+            {pendingReviews.length === 0 &&
+              completedReviews.length === 0 && (
+
+              <div className="ws-card ws-card-large text-center">
+
+                <p className="text-5xl mb-4">
+                  ✈️
+                </p>
+
+                <h2 className="text-2xl font-black text-[var(--ws-midnight)]">
+                  Todavía no hay actividad
+                </h2>
+
+                <p className="text-[var(--ws-slate)] mt-2">
+                  Tus viajes y reseñas aparecerán acá una vez completados.
+                </p>
+
+              </div>
+
+            )}
+
+          </div>
+
+        </section>
+
+      </main>
+
+    </div>
+  )
+}

@@ -1,25 +1,23 @@
-import { prisma } from "../../lib/prisma"
+import { redirect } from "next/navigation"
+import { getCurrentUser } from "@/lib/current-user"
 
-async function getReviews() {
-  try {
-    return await prisma.review.findMany()
-  } catch (error) {
-    console.error(error)
-    return []
+export default async function DashboardPage() {
+
+  const user = await getCurrentUser()
+
+  if (!user) {
+    redirect("/sign-in")
   }
-}
 
-export default async function Dashboard() {
-  const reviews = await getReviews()
+  switch (user.role) {
 
-  return (
-    <div>
-      <h1>Dashboard</h1>
-      {reviews.map((r: any) => (
-        <div key={r.id}>
-          {r.comment}
-        </div>
-      ))}
-    </div>
-  )
+    case "ADMIN":
+      redirect("/dashboard/admin")
+
+    case "DRIVER":
+      redirect("/dashboard/driver")
+
+    default:
+      redirect("/dashboard/passenger")
+  }
 }

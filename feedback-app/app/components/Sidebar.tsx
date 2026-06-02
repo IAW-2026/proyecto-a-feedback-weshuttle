@@ -1,11 +1,11 @@
 export default function Sidebar() {
   return (
-    <aside className="hidden md:flex flex-col h-full w-80 fixed left-0 top-0 z-50 border-r border-gray-300 bg-white p-4">
+    <aside className="hidden md:flex flex-col h-full w-80 fixed left-0 top-0 z-50 border-r border-[var(--ws-outline)] bg-white p-4 shadow-[0_2px_12px_rgba(10,25,47,0.04)]">
 
       {/* Header */}
       <div className="flex flex-col gap-2 mb-8 mt-4 px-1">
 
-        <div className="text-2xl font-black text-blue-600 mb-6">
+        <div className="ws-brand mb-6">
           WeShuttle
         </div>
 
@@ -22,7 +22,7 @@ export default function Sidebar() {
               Welcome back
             </h2>
 
-            <p className="text-sm text-gray-500">
+              <p className="text-sm text-[var(--ws-slate)]">
               Passenger Account
             </p>
           </div>
@@ -35,7 +35,7 @@ export default function Sidebar() {
 
         <a
           href="#"
-          className="flex items-center gap-4 px-4 py-2 hover:bg-gray-100"
+          className="ws-nav-link flex items-center gap-4 px-4 py-3 hover:bg-slate-100"
         >
           <span className="material-symbols-outlined">
             history
@@ -46,7 +46,7 @@ export default function Sidebar() {
 
         <a
           href="#"
-          className="flex items-center gap-4 px-4 py-2 bg-blue-600 text-white"
+          className="ws-nav-link ws-nav-link-active flex items-center gap-4 px-4 py-3"
         >
           <span className="material-symbols-outlined">
             contact_support
