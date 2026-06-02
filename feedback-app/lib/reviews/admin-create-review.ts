@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 type ReviewRole = "driver" | "rider"
@@ -44,7 +45,9 @@ export async function createAdminReview(input: CreateAdminReviewInput) {
     Number.isNaN(input.rating) ||
     input.rating < 1 ||
     input.rating > 5 ||
-    (typeof input.comment !== "undefined" && input.comment !== null && typeof input.comment !== "string")
+    (typeof input.comment !== "undefined" &&
+      input.comment !== null &&
+      typeof input.comment !== "string")
   ) {
     throw new Error("INVALID_REVIEW_PAYLOAD")
   }
@@ -62,7 +65,7 @@ export async function createAdminReview(input: CreateAdminReviewInput) {
   const authorName = input.author_name?.trim() ?? null
   const targetName = input.target_name?.trim() ?? null
 
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.user.upsert({
       where: { id: input.author_user_id },
       update: {
@@ -109,4 +112,6 @@ export async function createAdminReview(input: CreateAdminReviewInput) {
   })
 }
 
-export type CreatedAdminReview = Awaited<ReturnType<typeof createAdminReview>>
+export type CreatedAdminReview = Awaited<
+  ReturnType<typeof createAdminReview>
+>
