@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import ReportReviewModal from "./ReportReviewModal"
 
 type ReviewItem = {
   id: string
@@ -13,11 +14,12 @@ type ReviewItem = {
 
 type Props = {
   reviews: ReviewItem[]
+  currentUserRole: "driver" | "rider"
 }
 
 const pageSize = 3
 
-export default function PaginatedReviews({ reviews }: Props) {
+export default function PaginatedReviews({ reviews, currentUserRole }: Props) {
   const [currentPage, setCurrentPage] = useState(1)
 
   const totalPages = Math.max(1, Math.ceil(reviews.length / pageSize))
@@ -93,7 +95,7 @@ export default function PaginatedReviews({ reviews }: Props) {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
               <div>
                 <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
-                  Pasajero
+                  {currentUserRole === "driver" ? "Pasajero" : "Conductor"}
                 </p>
 
                 <h2 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
@@ -116,9 +118,15 @@ export default function PaginatedReviews({ reviews }: Props) {
               {"★".repeat(review.rating || 0)}
             </div>
 
-            <p className="text-lg leading-relaxed text-[var(--ws-midnight)]">
-              {review.comment || "Sin comentario registrado."}
-            </p>
+            <div className="space-y-4">
+              <p className="text-lg leading-relaxed text-[var(--ws-midnight)]">
+                {review.comment || "Sin comentario registrado."}
+              </p>
+
+              <div className="flex justify-end pt-4 border-t border-[var(--ws-outline)]">
+                <ReportReviewModal reviewId={review.id} reporterRole={currentUserRole} />
+              </div>
+            </div>
           </article>
         ))}
       </div>

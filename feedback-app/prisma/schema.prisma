@@ -38,6 +38,7 @@ model Review {
   completed_at DateTime? // Nuevo campo: Fecha en la que el usuario completó la reseña.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  reports   Report[]
 }
 
 model RatingAverage {
@@ -53,17 +54,33 @@ model RatingAverage {
 
 model Report {
   id               String    @id @default(cuid())
-  pool_id          String?
-  reservation_id   String?
+  review_id        String
+  review           Review    @relation(fields: [review_id], references: [id], onDelete: Cascade)
+  
   reporter_user_id String
   reporter_role    String
-  reported_user_id String
-  reported_role    String
-  reason           String
-  description      String?
-  status           String    @default("PENDING") // PENDING, REVIEWED, REJECTED
+  
+  type             ReportType
+  description      String?   // Comentario opcional
+  status           ReportStatus @default(PENDING)
+  
   reviewed_at      DateTime?
   createdAt        DateTime  @default(now())
+}
+
+enum ReportType {
+  SPAM
+  CONTENIDO_OFENSIVO
+  INFORMACION_FALSA
+  DATOS_PERSONALES
+  OTROS
+}
+
+enum ReportStatus {
+  PENDING
+  BAJO_REVISION
+  RESUELTO
+  RECHAZADO
 }
 
 enum ReviewStatus { // Renombrado de EstadoReseña
