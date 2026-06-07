@@ -2,6 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 // La constante isPublicRoute es una funcion que recibe una ruta 
 // y devuelve true si la ruta es publica, es decir, si no requiere autenticacion
+// Define que rutas no necesitan contraseña
 const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',

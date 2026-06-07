@@ -26,7 +26,8 @@ export default function PaginatedReviews({ reviews }: Props) {
     const start = (currentPage - 1) * pageSize
     return reviews.slice(start, start + pageSize)
   }, [currentPage, reviews])
-
+// constante que define la función goToPage, que se encarga de actualizar 
+// el estado currentPage para navegar entre las páginas de reseñas.
   const goToPage = (page: number) => {
     setCurrentPage(Math.min(Math.max(page, 1), totalPages))
   }

@@ -1,5 +1,6 @@
 // endpoint POST /api/reviews/submit
 import { prisma } from "@/lib/prisma"
+// API Interna que actualiza una reseña PENDING a COMPLETED, asignándole la calificación y comentario correspondiente. Solo puede ser accedida por admins.
 
 export async function POST(req: Request) {
 

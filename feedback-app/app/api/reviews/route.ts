@@ -1,5 +1,6 @@
 // --> GET /api/reviews
-
+// Api interna para que admins puedan ver todas las reseñas existentes
+//  en la base de datos. No debería ser accedida por la Driver App ni la Rider App. Solo para fines administrativos.
 import { prisma } from "@/lib/prisma"
 import { getCurrentUser } from "@/lib/current-user"
 
