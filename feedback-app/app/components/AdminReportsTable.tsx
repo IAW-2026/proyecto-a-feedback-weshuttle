@@ -92,9 +92,11 @@ export default function AdminReportsTable({ initialReports }: Props) {
                 <span className="ws-pill ws-pill-info font-black">
                   {tripReports.length} {tripReports.length === 1 ? 'Reporte' : 'Reportes'}
                 </span>
-                <span className={`text-2xl transition-transform duration-200 ${expandedTrips[poolId] ? 'rotate-180' : ''}`}>
-                  ↓
-                </span>
+                <div className={`transition-transform duration-200 ${expandedTrips[poolId] ? 'rotate-180' : ''}`}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
               </div>
             </button>
 

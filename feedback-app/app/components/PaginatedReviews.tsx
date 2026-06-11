@@ -55,7 +55,9 @@ export default function PaginatedReviews({ reviews, currentUserRole }: Props) {
               className="ws-secondary-button h-11 min-h-11 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página anterior"
             >
-              ←
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
 
             <div className="flex items-center gap-2">
@@ -84,7 +86,9 @@ export default function PaginatedReviews({ reviews, currentUserRole }: Props) {
               className="ws-secondary-button h-11 min-h-11 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página siguiente"
             >
-              →
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           </div>
         )}
