@@ -10,6 +10,7 @@ type ReviewItem = {
   rating: number | null
   comment: string | null
   dateLabel: string
+  isReported?: boolean
 }
 
 type Props = {
@@ -124,7 +125,11 @@ export default function PaginatedReviews({ reviews, currentUserRole }: Props) {
               </p>
 
               <div className="flex justify-end pt-4 border-t border-[var(--ws-outline)]">
-                <ReportReviewModal reviewId={review.id} reporterRole={currentUserRole} />
+                <ReportReviewModal 
+                  reviewId={review.id} 
+                  reporterRole={currentUserRole} 
+                  initialIsReported={review.isReported}
+                />
               </div>
             </div>
           </article>

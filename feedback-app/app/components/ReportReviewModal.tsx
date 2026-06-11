@@ -6,11 +6,13 @@ import { createReport } from '@/prisma/report-actions'
 interface ReportReviewModalProps {
   reviewId: string
   reporterRole: 'rider' | 'driver'
+  initialIsReported?: boolean
 }
 
-export default function ReportReviewModal({ reviewId, reporterRole }: ReportReviewModalProps) {
+export default function ReportReviewModal({ reviewId, reporterRole, initialIsReported = false }: ReportReviewModalProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
+  const [reported, setReported] = useState(initialIsReported)
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
   const handleSubmit = async (formData: FormData) => {
@@ -25,6 +27,7 @@ export default function ReportReviewModal({ reviewId, reporterRole }: ReportRevi
     
     setIsPending(false)
     if (result.success) {
+      setReported(true)
       setMessage({ text: 'Reporte enviado con éxito.', type: 'success' })
       // Cerramos el modal automáticamente después de un momento
       setTimeout(() => {
@@ -34,6 +37,14 @@ export default function ReportReviewModal({ reviewId, reporterRole }: ReportRevi
     } else {
       setMessage({ text: result.error || 'No se pudo enviar el reporte.', type: 'error' })
     }
+  }
+
+  if (reported) {
+    return (
+      <div className="px-4 py-2 text-[10px] font-black text-slate-400 bg-slate-100 rounded-lg uppercase tracking-[0.2em] border border-slate-200 cursor-not-allowed">
+        Reportado
+      </div>
+    )
   }
 
   return (
@@ -97,7 +108,7 @@ export default function ReportReviewModal({ reviewId, reporterRole }: ReportRevi
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="flex-1 px-6 py-4 border border-[var(--ws-outline)] rounded-[16px] text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all active:scale-95"
+                  className="flex-1 px-6 py-4 border border-[var(--ws-outline)] rounded-[16px] text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
                   disabled={isPending}
                 >
                   Cerrar
@@ -105,7 +116,7 @@ export default function ReportReviewModal({ reviewId, reporterRole }: ReportRevi
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="flex-1 px-6 py-4 bg-red-600 text-white rounded-[16px] text-xs font-black uppercase tracking-widest hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-200 disabled:opacity-50 disabled:shadow-none"
+                  className="flex-1 px-6 py-4 bg-red-600 text-white rounded-[16px] text-xs font-black uppercase tracking-widest hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-200 disabled:opacity-50 disabled:shadow-none cursor-pointer"
                 >
                   {isPending ? 'Enviando...' : 'Reportar'}
                 </button>

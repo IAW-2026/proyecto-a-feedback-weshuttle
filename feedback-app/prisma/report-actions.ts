@@ -8,13 +8,20 @@ import { auth } from '@clerk/nextjs/server'
  * Crea un nuevo reporte para una reseña
  */
 export async function createReport(formData: FormData) {
-  const reviewId = formData.get('reviewId') as string
-  const type = formData.get('type') as string
-  const description = formData.get('description') as string
-  const reporterRole = formData.get('reporterRole') as string // 'RIDER' o 'DRIVER'
+  const { userId } = await auth() // Obtener el ID del usuario actual de la sesión de Clerk
 
-  const { userId } = await auth()
-  if (!userId) return { success: false, error: 'No autorizado' }
+  if (!userId) {
+    return { success: false, error: 'Usuario no autenticado.' }
+  }
+
+  const reviewId = formData.get('reviewId') as string
+  const reporterRole = formData.get('reporterRole') as string // 'RIDER' o 'DRIVER'
+  const type = formData.get('type') as string // SPAM, CONTENIDO_OFENSIVO, etc.
+  const description = formData.get('description') as string | null
+
+  if (!reviewId || !reporterRole || !type) {
+    return { success: false, error: 'Faltan campos requeridos para el reporte.' }
+  }
 
   try {
     await prisma.report.create({
@@ -31,8 +38,8 @@ export async function createReport(formData: FormData) {
     revalidatePath('/dashboard/admin/reports')
     return { success: true }
   } catch (error) {
-    console.error('Error al crear reporte:', error)
-    return { success: false, error: 'No se pudo procesar el reporte.' }
+    console.error('Error creando reporte:', error)
+    return { success: false, error: 'No se pudo crear el reporte.' }
   }
 }
 
@@ -66,17 +73,17 @@ export async function getAdminReports() {
 }
 
 /**
- * Actualiza el estado de un reporte (BAJO_REVISION, RECHAZADO, RESUELTO)
- * Si se marca como RESUELTO, se elimina la reseña asociada.
+ * Actualiza el estado de un reporte (RECHAZADO, RESUELTO)
+ * Si se marca como RESUELTO, se oculta la reseña asociada (soft delete).
  */
-export async function updateReportStatus(reportId: string, status: string) {
+export async function updateReportStatus(reportId: string, status: 'RESUELTO' | 'RECHAZADO') {
   try {
     const updatedReport = await prisma.report.update({
       where: { id: reportId },
-      data: { status: status as any, reviewed_at: status === 'RESUELTO' || status === 'RECHAZADO' ? new Date() : null },
+      data: { status: status, reviewed_at: new Date() },
     })
 
-    // Si el administrador resuelve el reporte, eliminamos la reseña ofensiva
+    // Si el administrador resuelve el reporte, marcamos la reseña como eliminada (borrado lógico)
     if (status === 'RESUELTO' && updatedReport.review_id) {
       await prisma.review.update({
         where: { id: updatedReport.review_id },
@@ -85,6 +92,9 @@ export async function updateReportStatus(reportId: string, status: string) {
     }
 
     revalidatePath('/dashboard/admin/reports')
+    revalidatePath('/dashboard/driver/trips')
+    revalidatePath('/dashboard/passenger/trips')
+
     return { success: true }
   } catch (error) {
     console.error('Error al actualizar reporte:', error)

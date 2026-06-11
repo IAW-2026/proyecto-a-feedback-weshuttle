@@ -12,7 +12,8 @@ import { Prisma } from "@prisma/client"
 
 type ReviewWithAuthor = Prisma.ReviewGetPayload<{
   include: {
-    author: true
+    author: true,
+    reports: true
   }
 }>
 
@@ -39,6 +40,11 @@ async function getTripReviews(
 
       include: {
         author: true,
+        reports: {
+          where: {
+            reporter_user_id: userId
+          }
+        }
       },
 
       orderBy: [
@@ -121,6 +127,7 @@ export default async function TripReviewsPage({
     reservationId: review.reservation_id,
     rating: review.rating,
     comment: review.comment,
+    isReported: review.reports.length > 0,
     dateLabel: formatTripDate(
       review.completed_at ??
       review.enabled_at ??

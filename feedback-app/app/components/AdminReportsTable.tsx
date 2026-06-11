@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { updateReportStatus } from '@/prisma/report-actions'
 
-type ReportStatus = 'PENDING' | 'BAJO_REVISION' | 'RESUELTO' | 'RECHAZADO'
+type ReportStatus = 'PENDING' | 'RESUELTO' | 'RECHAZADO'
 
 interface ReportItem {
   id: string
@@ -30,7 +30,7 @@ interface Props {
 export default function AdminReportsTable({ initialReports }: Props) {
   const [reports, setReports] = useState(initialReports)
   const [expandedTrips, setExpandedTrips] = useState<Record<string, boolean>>({})
-  const [isUpdating, setIsPending] = useState<string | null>(null)
+  const [updatingReportId, setIsUpdating] = useState<string | null>(null)
 
   // Agrupamos los reportes por Pool ID (Viaje)
   const reportsByTrip = useMemo(() => {
@@ -47,12 +47,12 @@ export default function AdminReportsTable({ initialReports }: Props) {
     setExpandedTrips(prev => ({ ...prev, [poolId]: !prev[poolId] }))
   }
 
-  const handleStatusUpdate = async (reportId: string, newStatus: ReportStatus) => {
+  const handleStatusUpdate = async (reportId: string, newStatus: 'RESUELTO' | 'RECHAZADO') => {
     if (newStatus === 'RESUELTO' && !confirm('¿Resolver este reporte? Si la reseña es inapropiada, será marcada para eliminación.')) return
     
-    setIsPending(reportId)
+    setIsUpdating(reportId)
     const result = await updateReportStatus(reportId, newStatus)
-    setIsPending(null)
+    setIsUpdating(null)
 
     if (result.success) {
       setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: newStatus } : r))
@@ -64,7 +64,6 @@ export default function AdminReportsTable({ initialReports }: Props) {
   const getStatusPill = (status: ReportStatus) => {
     switch (status) {
       case 'PENDING': return 'ws-pill-warning'
-      case 'BAJO_REVISION': return 'ws-pill-info'
       case 'RESUELTO': return 'ws-pill-success'
       case 'RECHAZADO': return 'bg-gray-200 text-gray-600'
       default: return ''
@@ -124,21 +123,14 @@ export default function AdminReportsTable({ initialReports }: Props) {
                         {report.status !== 'RESUELTO' && report.status !== 'RECHAZADO' && (
                           <>
                             <button 
-                              disabled={!!isUpdating}
-                              onClick={() => handleStatusUpdate(report.id, 'BAJO_REVISION')}
-                              className="px-3 py-2 text-[10px] font-black uppercase bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 cursor-pointer"
-                            >
-                              Revisar
-                            </button>
-                            <button 
-                              disabled={!!isUpdating}
+                              disabled={!!updatingReportId}
                               onClick={() => handleStatusUpdate(report.id, 'RECHAZADO')}
                               className="px-3 py-2 text-[10px] font-black uppercase bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 cursor-pointer"
                             >
                               Rechazar
                             </button>
                             <button 
-                              disabled={!!isUpdating}
+                              disabled={!!updatingReportId}
                               onClick={() => handleStatusUpdate(report.id, 'RESUELTO')}
                               className="px-3 py-2 text-[10px] font-black uppercase bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer"
                             >
