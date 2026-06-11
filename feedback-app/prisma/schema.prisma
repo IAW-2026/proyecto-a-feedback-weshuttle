@@ -87,6 +87,7 @@ enum ReviewStatus { // Renombrado de EstadoReseña
   PRECREATED
   PENDING
   COMPLETED
+  REMOVED
 }
 
 enum Role {

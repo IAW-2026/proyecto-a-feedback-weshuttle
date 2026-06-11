@@ -28,7 +28,7 @@ export async function createReport(formData: FormData) {
       },
     })
 
-    revalidatePath('/admin/reports')
+    revalidatePath('/dashboard/admin/reports')
     return { success: true }
   } catch (error) {
     console.error('Error al crear reporte:', error)
@@ -78,12 +78,13 @@ export async function updateReportStatus(reportId: string, status: string) {
 
     // Si el administrador resuelve el reporte, eliminamos la reseña ofensiva
     if (status === 'RESUELTO') {
-      await prisma.review.delete({
-        where: { id: updatedReport.review_id }
+      await prisma.review.update({
+        where: { id: updatedReport.review_id },
+        data: { status: 'REMOVED' }
       })
     }
 
-    revalidatePath('/admin/reports')
+    revalidatePath('/dashboard/admin/reports')
     return { success: true }
   } catch (error) {
     console.error('Error al actualizar reporte:', error)

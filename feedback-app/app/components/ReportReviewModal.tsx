@@ -19,7 +19,7 @@ export default function ReportReviewModal({ reviewId, reporterRole }: ReportRevi
     
     // Agregamos los campos ocultos necesarios para la Server Action
     formData.append('reviewId', reviewId)
-    formData.append('reporterRole', reporterRole.toUpperCase()) // 'RIDER' o 'DRIVER'
+    formData.append('reporterRole', (reporterRole || 'DRIVER').toUpperCase()) // 'RIDER' o 'DRIVER'
 
     const result = await createReport(formData)
     
