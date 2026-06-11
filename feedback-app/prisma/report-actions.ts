@@ -77,7 +77,7 @@ export async function updateReportStatus(reportId: string, status: string) {
     })
 
     // Si el administrador resuelve el reporte, eliminamos la reseña ofensiva
-    if (status === 'RESUELTO') {
+    if (status === 'RESUELTO' && updatedReport.review_id) {
       await prisma.review.update({
         where: { id: updatedReport.review_id },
         data: { status: 'REMOVED' }

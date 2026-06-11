@@ -207,7 +207,7 @@ export default async function TripReviewsPage({
 
         {reviews.length > 0 ? (
 
-          <PaginatedReviews reviews={reviewItems} />
+          <PaginatedReviews reviews={reviewItems} currentUserRole="driver" />
 
         ) : (
 
