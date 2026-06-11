@@ -27,21 +27,36 @@ interface Props {
   initialReports: ReportItem[]
 }
 
+const pageSize = 5
+
 export default function AdminReportsTable({ initialReports }: Props) {
   const [reports, setReports] = useState(initialReports)
   const [expandedTrips, setExpandedTrips] = useState<Record<string, boolean>>({})
   const [updatingReportId, setIsUpdating] = useState<string | null>(null)
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'RIDER' | 'DRIVER'>('ALL')
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Agrupamos los reportes por Pool ID (Viaje)
   const reportsByTrip = useMemo(() => {
     const groups: Record<string, ReportItem[]> = {}
-    reports.forEach((report) => {
+    
+    const filtered = roleFilter === 'ALL' 
+      ? reports 
+      : reports.filter(r => r.reporter_role === roleFilter)
+
+    filtered.forEach((report) => {
       const poolId = report.review.pool_id
       if (!groups[poolId]) groups[poolId] = []
       groups[poolId].push(report)
     })
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]))
-  }, [reports])
+  }, [reports, roleFilter])
+
+  const totalPages = Math.max(1, Math.ceil(reportsByTrip.length / pageSize))
+  const visibleTrips = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return reportsByTrip.slice(start, start + pageSize)
+  }, [currentPage, reportsByTrip])
 
   const toggleTrip = (poolId: string) => {
     setExpandedTrips(prev => ({ ...prev, [poolId]: !prev[poolId] }))
@@ -71,13 +86,65 @@ export default function AdminReportsTable({ initialReports }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Filtros por Rol */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-2 rounded-2xl border border-[var(--ws-outline)] shadow-sm">
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setRoleFilter('ALL'); setCurrentPage(1); }}
+            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'ALL' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
+          >
+            Todos
+          </button>
+          <button
+            onClick={() => { setRoleFilter('RIDER'); setCurrentPage(1); }}
+            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'RIDER' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
+          >
+            Pasajeros
+          </button>
+          <button
+            onClick={() => { setRoleFilter('DRIVER'); setCurrentPage(1); }}
+            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'DRIVER' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
+          >
+            Conductores
+          </button>
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2 pr-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="ws-secondary-button h-10 w-10 p-0 flex items-center justify-center disabled:opacity-40 cursor-pointer"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <span className="text-[10px] font-black text-[var(--ws-slate)] uppercase px-2">
+              Pág. {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="ws-secondary-button h-10 w-10 p-0 flex items-center justify-center disabled:opacity-40 cursor-pointer"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+
       {reportsByTrip.length === 0 ? (
         <div className="ws-card p-12 text-center text-[var(--ws-slate)] font-bold">
-          No hay reportes pendientes de revisión.
+          No hay reportes que coincidan con el filtro.
         </div>
       ) : (
-        reportsByTrip.map(([poolId, tripReports]) => (
+        visibleTrips.map(([poolId, tripReports]) => (
           <div key={poolId} className="ws-card overflow-hidden">
             {/* Cabecera del Viaje */}
             <button 
@@ -134,7 +201,7 @@ export default function AdminReportsTable({ initialReports }: Props) {
                             <button 
                               disabled={!!updatingReportId}
                               onClick={() => handleStatusUpdate(report.id, 'RESUELTO')}
-                              className="px-3 py-2 text-[10px] font-black uppercase bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer"
+                              className="px-3 py-2 text-[10px] font-black uppercase bg-[var(--ws-midnight)] text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
                             >
                               Resolver
                             </button>
