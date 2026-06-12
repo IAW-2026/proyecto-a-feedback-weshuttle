@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createReport } from '@/prisma/report-actions'
+import Toast from './Toast'
 
 interface ReportReviewModalProps {
   reviewId: string
@@ -13,11 +14,17 @@ export default function ReportReviewModal({ reviewId, reporterRole, initialIsRep
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [reported, setReported] = useState(initialIsReported)
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+
+  // Estado para la notificación de popeo (Toast)
+  const [toast, setToast] = useState<{ show: boolean; msg: string; type: 'success' | 'error' }>({
+    show: false,
+    msg: '',
+    type: 'success'
+  })
 
   const handleSubmit = async (formData: FormData) => {
     setIsPending(true)
-    setMessage(null)
+    setToast(prev => ({ ...prev, show: false }))
     
     // Agregamos los campos ocultos necesarios para la Server Action
     formData.append('reviewId', reviewId)
@@ -28,14 +35,13 @@ export default function ReportReviewModal({ reviewId, reporterRole, initialIsRep
     setIsPending(false)
     if (result.success) {
       setReported(true)
-      setMessage({ text: 'Reporte enviado con éxito.', type: 'success' })
+      setToast({ show: true, msg: 'Reporte enviado con éxito.', type: 'success' })
       // Cerramos el modal automáticamente después de un momento
       setTimeout(() => {
         setIsOpen(false)
-        setMessage(null)
       }, 2000)
     } else {
-      setMessage({ text: result.error || 'No se pudo enviar el reporte.', type: 'error' })
+      setToast({ show: true, msg: result.error || 'No se pudo enviar el reporte.', type: 'error' })
     }
   }
 
@@ -49,6 +55,13 @@ export default function ReportReviewModal({ reviewId, reporterRole, initialIsRep
 
   return (
     <>
+      <Toast 
+        isVisible={toast.show}
+        message={toast.msg}
+        type={toast.type}
+        onClose={() => setToast(prev => ({ ...prev, show: false }))}
+      />
+
       {/* Botón disparador */}
       <button 
         onClick={() => setIsOpen(true)}
@@ -97,12 +110,6 @@ export default function ReportReviewModal({ reviewId, reporterRole, initialIsRep
                   className="w-full p-4 border border-[var(--ws-outline)] rounded-[16px] bg-[var(--ws-info-soft)] text-sm font-medium focus:ring-2 focus:ring-red-500 outline-none resize-none transition-all"
                 />
               </div>
-
-              {message && (
-                <p className={`text-sm font-bold ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                  {message.text}
-                </p>
-              )}
 
               <div className="flex gap-3 pt-4">
                 <button

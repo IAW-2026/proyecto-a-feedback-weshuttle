@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import { updateReportStatus } from '@/prisma/report-actions'
+import ActionModal from './ActionModal'
+import Toast from './Toast'
 
 type ReportStatus = 'PENDING' | 'RESUELTO' | 'RECHAZADO'
 
@@ -36,6 +38,22 @@ export default function AdminReportsTable({ initialReports }: Props) {
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'RIDER' | 'DRIVER'>('ALL')
   const [currentPage, setCurrentPage] = useState(1)
 
+  // Estado para el Toast
+  const [toast, setToast] = useState<{ show: boolean; msg: string; type: 'success' | 'error' }>({
+    show: false,
+    msg: '',
+    type: 'success'
+  })
+
+  // Estado para controlar el ActionModal
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm?: () => void;
+    variant: 'danger' | 'info' | 'success';
+  }>({ isOpen: false, title: '', description: '', variant: 'info' });
+
   // Agrupamos los reportes por Pool ID (Viaje)
   const reportsByTrip = useMemo(() => {
     const groups: Record<string, ReportItem[]> = {}
@@ -62,17 +80,45 @@ export default function AdminReportsTable({ initialReports }: Props) {
     setExpandedTrips(prev => ({ ...prev, [poolId]: !prev[poolId] }))
   }
 
-  const handleStatusUpdate = async (reportId: string, newStatus: 'RESUELTO' | 'RECHAZADO') => {
-    if (newStatus === 'RESUELTO' && !confirm('¿Resolver este reporte? Si la reseña es inapropiada, será marcada para eliminación.')) return
-    
+  const executeStatusUpdate = async (reportId: string, newStatus: 'RESUELTO' | 'RECHAZADO') => {
     setIsUpdating(reportId)
     const result = await updateReportStatus(reportId, newStatus)
     setIsUpdating(null)
 
     if (result.success) {
       setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: newStatus } : r))
+      setToast({ 
+        show: true, 
+        msg: newStatus === 'RESUELTO' ? 'Reporte resuelto y reseña ocultada.' : 'Reporte rechazado correctamente.', 
+        type: 'success' 
+      })
     } else {
-      alert(result.error || 'Error al actualizar el estado')
+      setModalConfig({
+        isOpen: true,
+        title: 'Error',
+        description: result.error || 'No se pudo actualizar el estado del reporte.',
+        variant: 'danger'
+      })
+    }
+  }
+
+  const handleStatusUpdate = (reportId: string, newStatus: 'RESUELTO' | 'RECHAZADO') => {
+    if (newStatus === 'RESUELTO') {
+      setModalConfig({
+        isOpen: true,
+        title: '¿Resolver reporte?',
+        description: 'Al resolver este reporte, la reseña ofensiva será ocultada permanentemente para los usuarios.',
+        variant: 'info',
+        onConfirm: () => executeStatusUpdate(reportId, newStatus)
+      })
+    } else {
+      setModalConfig({
+        isOpen: true,
+        title: '¿Rechazar reporte?',
+        description: 'Si rechazas el reporte, la reseña permanecerá visible y el reporte se marcará como cerrado.',
+        variant: 'danger',
+        onConfirm: () => executeStatusUpdate(reportId, newStatus)
+      })
     }
   }
 
@@ -86,7 +132,24 @@ export default function AdminReportsTable({ initialReports }: Props) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      <Toast 
+        isVisible={toast.show}
+        message={toast.msg}
+        type={toast.type}
+        onClose={() => setToast(prev => ({ ...prev, show: false }))}
+      />
+
+      {/* Modal de Acción Personalizado */}
+      <ActionModal 
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        description={modalConfig.description}
+        variant={modalConfig.variant}
+        onConfirm={modalConfig.onConfirm}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+      />
+
       {/* Filtros por Rol */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-2 rounded-2xl border border-[var(--ws-outline)] shadow-sm">
         <div className="flex gap-2">
