@@ -76,12 +76,24 @@ export default function DriverPendingTripsAccordion({ trips }: Props) {
 
 							<div className="flex items-center gap-3 shrink-0">
 								<span
-									className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ws-outline)] bg-white text-[var(--ws-midnight)] transition-transform cursor-pointer ${
-										isExpanded ? "rotate-90" : ""
-									}`}
+									className={`ws-secondary-button
+										h-11
+										min-h-11
+										w-11
+										min-w-11
+										p-0
+										flex
+										items-center
+										justify-center
+										transition-transform
+										duration-200
+										${isExpanded ? "rotate-90" : ""}
+									`}
 									aria-hidden="true"
-								>
-									→
+									>
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+										<path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+									</svg>
 								</span>
 							</div>
 						</button>

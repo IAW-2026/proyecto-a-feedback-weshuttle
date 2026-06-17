@@ -4,11 +4,13 @@ import { redirect } from "next/navigation"
 import Navbar from "../../../components/NavBar"
 import { prisma } from "../../../../lib/prisma"
 import { getCurrentUser } from "@/lib/current-user"
+import ReportReviewModal from "../../../components/ReportReviewModal" // Importar el modal de reporte
 import { Prisma } from "@prisma/client"
 
 type ReviewWithDriver = Prisma.ReviewGetPayload<{
   include: {
-    author: true
+    author: true,
+    reports: true // Incluir los reportes asociados a la reseña
   }
 }>
 
@@ -24,10 +26,20 @@ async function getPassengerTrips(
         target_user_id: userId,
         target_role: "rider",
         status: "COMPLETED",
+        // Excluir reseñas que han sido marcadas como REMOVED por un administrador
+        NOT: {
+          status: "REMOVED"
+        }
       },
+
 
       include: {
         author: true,
+        reports: { // Incluir reportes hechos por el usuario actual sobre esta reseña
+          where: {
+            reporter_user_id: userId
+          }
+        }
       },
 
       orderBy: [
@@ -113,7 +125,7 @@ export default async function PassengerTripsPage() {
             href="/dashboard/passenger"
             className="ws-secondary-button"
           >
-            Volver al dashboard
+            Volver al inicio
           </Link>
 
         </section>
@@ -160,6 +172,7 @@ export default async function PassengerTripsPage() {
                 trip.completed_at ??
                 trip.enabled_at ??
                 trip.createdAt
+              const isReported = trip.reports.length > 0
 
               return (
 
@@ -232,6 +245,14 @@ export default async function PassengerTripsPage() {
                     {trip.comment || "Sin comentario registrado."}
 
                   </p>
+
+                  <div className="flex justify-end pt-4 border-t border-[var(--ws-outline)]">
+                    <ReportReviewModal
+                      reviewId={trip.id}
+                      reporterRole="rider" // El pasajero está reportando al conductor
+                      initialIsReported={isReported}
+                    />
+                  </div>
 
                 </article>
 

@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import type { CreateAdminReviewInput, CreatedAdminReview } from "@/lib/reviews/admin-create-review"
+import ActionModal from './ActionModal'
+import Toast from "./Toast"
 
 type User = {
   id: string
@@ -182,6 +184,22 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
   const [createError, setCreateError] = useState<string | null>(null)
   const [createSaving, setCreateSaving] = useState(false)
 
+  // Estado para el Toast
+  const [toast, setToast] = useState<{ show: boolean; msg: string; type: 'success' | 'error' }>({
+    show: false,
+    msg: '',
+    type: 'success'
+  })
+
+  // Estado para controlar el ActionModal de confirmación/alertas
+  const [actionModalConfig, setActionModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm?: () => void;
+    variant: 'danger' | 'info' | 'success';
+  }>({ isOpen: false, title: '', description: '', variant: 'info' });
+
   const openModal = (r: Review) => {
     setSelected(r)
     setEditRating(r.rating ?? 0)
@@ -228,6 +246,7 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
     if (res.ok) {
       const updated = await res.json()
       setReviews((cur) => cur.map((r) => (r.id === id ? { ...r, ...updated } : r)))
+      setToast({ show: true, msg: 'Reseña actualizada con éxito.', type: 'success' })
       closeModal()
     } else {
       console.error("Failed to update review", await res.text())
@@ -290,6 +309,7 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
       })
 
       setReviews((cur) => [created, ...cur])
+      setToast({ show: true, msg: 'Nueva reseña creada en el sistema.', type: 'success' })
       closeCreateModal()
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo crear la reseña."
@@ -299,16 +319,32 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
     }
   }
 
-  const deleteReview = async (id: string) => {
-    if (!confirm("¿Eliminar esta reseña? Esta acción no se puede deshacer.")) return
-
+  const executeDeleteReview = async (id: string) => {
     const res = await fetch(`/api/reviews/${id}`, { method: "DELETE" })
     if (res.status === 204) {
       setReviews((cur) => cur.filter((r) => r.id !== id))
+      setToast({ show: true, msg: 'Reseña eliminada permanentemente.', type: 'success' })
       if (selected?.id === id) closeModal()
     } else {
-      console.error("Failed to delete review", await res.text())
+      const errorText = await res.text()
+      console.error("Failed to delete review", errorText)
+      setActionModalConfig({
+        isOpen: true,
+        title: 'Error',
+        description: 'No se pudo eliminar la reseña. Inténtalo de nuevo más tarde.',
+        variant: 'danger'
+      })
     }
+  }
+
+  const deleteReview = (id: string) => {
+    setActionModalConfig({
+      isOpen: true,
+      title: '¿Eliminar esta reseña?',
+      description: 'Esta acción no se puede deshacer y la reseña desaparecerá permanentemente del sistema.',
+      variant: 'danger',
+      onConfirm: () => executeDeleteReview(id)
+    })
   }
 
   const toggleExpand = (poolId: string) => setExpanded((s) => ({ ...s, [poolId]: !s[poolId] }))
@@ -317,6 +353,22 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
 
   return (
     <>
+      <Toast 
+        isVisible={toast.show}
+        message={toast.msg}
+        type={toast.type}
+        onClose={() => setToast(prev => ({ ...prev, show: false }))}
+      />
+
+      <ActionModal
+        isOpen={actionModalConfig.isOpen}
+        title={actionModalConfig.title}
+        description={actionModalConfig.description}
+        variant={actionModalConfig.variant}
+        onConfirm={actionModalConfig.onConfirm}
+        onClose={() => setActionModalConfig(prev => ({ ...prev, isOpen: false }))}
+      />
+
       <div className="space-y-4 admin-crud-table">
         {grouped.length === 0 ? (
           <div className="text-sm text-[var(--ws-slate)]">No hay reseñas para mostrar.</div>
