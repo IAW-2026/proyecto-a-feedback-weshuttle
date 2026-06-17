@@ -51,6 +51,18 @@ const targetDriverId = 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
       role: 'driver',
     },
   })
+
+  // CAPTURA: Creamos al conductor antes que las reseñas para evitar errores de Foreign Key
+  await prisma.user.upsert({
+    where: { id: targetDriverId },
+    update: {},
+    create: {
+      id: targetDriverId,
+      name: 'Conductor de Prueba (Seed)',
+      role: 'driver',
+    },
+  })
+
 // creamos un primer pool
   for (const passenger of passengers) {
     await prisma.user.upsert({
@@ -59,7 +71,7 @@ const targetDriverId = 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
       create: {
         id: passenger.id,
         name: passenger.name,
-        role: 'PASSENGER' as any,
+        role: 'rider',
       },
     })
   }
@@ -71,7 +83,7 @@ const targetDriverId = 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
     create: {
       id: passenger.id,
       name: passenger.name,
-      role: 'PASSENGER' as any,
+      role: 'rider',
     },
   })
 }

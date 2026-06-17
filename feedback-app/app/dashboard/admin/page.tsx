@@ -21,7 +21,7 @@ async function createAdminReviewAction(input: CreateAdminReviewInput) {
     throw new Error("UNAUTHORIZED")
   }
 
-  if (user.role !== "ADMIN") {
+  if (user.role !== "admin") {
     throw new Error("FORBIDDEN")
   }
 
@@ -32,7 +32,7 @@ export default async function AdminDashboard() {
   const user = await getCurrentUser()
 
   if (!user) redirect('/sign-in')
-  if (user.role !== 'ADMIN') redirect('/dashboard')
+  if (user.role !== 'admin') redirect('/dashboard')
 
   const reviews: ReviewWithUsers[] = await prisma.review.findMany({
     include: { author: true, recipient: true },

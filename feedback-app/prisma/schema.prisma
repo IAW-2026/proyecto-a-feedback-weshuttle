@@ -10,41 +10,41 @@ model User {
   id String @id
 
   name String?
-  role Role @default(PASSENGER)
+  role Role @default(rider)
   reviewsSent     Review[] @relation("ReviewsSent")
   reviewsReceived Review[] @relation("ReviewsReceived")
   createdAt DateTime @default(now())
 }
 
 model Review {
-  id String @id @default(cuid())
-  pool_id String
-  reservation_id String? // Nuevo campo: Identificador externo de la reserva asociada.
+  id             String       @id @default(cuid())
+  pool_id        String
+  reservation_id String?
 
-  author_user_id String // Renombrado de autor_id
-  author_role    String // Nuevo campo: Rol del autor
-  target_user_id String // Renombrado de destinatario_id
-  target_role    String // Nuevo campo: Rol del usuario calificado
+  author_user_id String
+  author_role    Role
+  target_user_id String
+  target_role    Role
 
-  author    User @relation("ReviewsSent", fields: [author_user_id], references: [id])
-  recipient User @relation("ReviewsReceived", fields: [target_user_id], references: [id])
+  author         User         @relation("ReviewsSent", fields: [author_user_id], references: [id])
+  recipient      User         @relation("ReviewsReceived", fields: [target_user_id], references: [id])
 
-  rating  Int?    // Renombrado de calificacion
-  comment String? // Renombrado de comentario
+  rating         Int?
+  comment        String?
 
-  status ReviewStatus @default(PRECREATED) // Renombrado de estado_reseña
+  status         ReviewStatus @default(PRECREATED)
 
-  enabled_at  DateTime? // Nuevo campo: Fecha en la que la reseña pasó a estar visible.
-  completed_at DateTime? // Nuevo campo: Fecha en la que el usuario completó la reseña.
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  reports   Report[]
+  enabled_at     DateTime?
+  completed_at   DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  reports        Report[]
 }
 
 model RatingAverage {
   id             String   @id @default(cuid())
   user_id        String
-  role           String   // rider, driver
+  role           Role
   average_rating Float?
   total_reviews  Int      @default(0)
   updated_at     DateTime @updatedAt
@@ -58,7 +58,7 @@ model Report {
   review           Review    @relation(fields: [review_id], references: [id], onDelete: Cascade)
   
   reporter_user_id String
-  reporter_role    String
+  reporter_role    Role
   
   type             ReportType
   description      String?   // Comentario opcional
@@ -78,7 +78,7 @@ enum ReportType {
 
 enum ReportStatus {
   PENDING
-  BAJO_REVISION
+  REVIEWED
   RESUELTO
   RECHAZADO
 }
@@ -91,7 +91,7 @@ enum ReviewStatus { // Renombrado de EstadoReseña
 }
 
 enum Role {
-  PASSENGER
-  DRIVER
-  ADMIN
+  rider
+  driver
+  admin
 }

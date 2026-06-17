@@ -125,7 +125,7 @@ export async function POST(req: Request) {
       create: {
         id: driver_user_id,
         name: driver_name || "Conductor WeShuttle", 
-        role: 'DRIVER',
+        role: 'driver',
       },
     });
 
@@ -151,7 +151,7 @@ export async function POST(req: Request) {
         create: {
           id: passenger.passenger_user_id,
           name: passenger.passenger_name,
-          role: 'PASSENGER',
+          role: 'rider',
         },
       });
 

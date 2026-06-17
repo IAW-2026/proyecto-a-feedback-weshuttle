@@ -94,7 +94,7 @@ export default async function TripReviewsPage({
     redirect("/sign-in")
   }
 
-  if (user.role !== "DRIVER") {
+  if (user.role !== "driver") {
     redirect("/dashboard")
   }
 

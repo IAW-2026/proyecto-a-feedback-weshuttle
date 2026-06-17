@@ -10,7 +10,7 @@ export default async function AdminReportsPage() {
   const user = await getCurrentUser()
 
   if (!user) redirect("/sign-in")
-  if (user.role !== "ADMIN") redirect("/dashboard")
+  if (user.role !== "admin") redirect("/dashboard")
 
   // 2. Obtención de datos directamente de la DB
   const reports = await getAdminReports()

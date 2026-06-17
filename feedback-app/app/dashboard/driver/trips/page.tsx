@@ -101,7 +101,7 @@ export default async function DriverTripsPage() {
     redirect("/sign-in")
   }
 
-  if (user.role !== "DRIVER") {
+  if (user.role !== "driver") {
     redirect("/dashboard")
   }
 

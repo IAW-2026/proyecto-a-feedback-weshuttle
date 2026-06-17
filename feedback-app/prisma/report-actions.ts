@@ -15,7 +15,7 @@ export async function createReport(formData: FormData) {
   }
 
   const reviewId = formData.get('reviewId') as string
-  const reporterRole = formData.get('reporterRole') as string // 'RIDER' o 'DRIVER'
+  const reporterRole = (formData.get('reporterRole') as string)?.toLowerCase() // 'rider' o 'driver'
   const type = formData.get('type') as string // SPAM, CONTENIDO_OFENSIVO, etc.
   const description = formData.get('description') as string | null
 
@@ -30,7 +30,7 @@ export async function createReport(formData: FormData) {
         review_id: reviewId,
         type: type as any,
         description,
-        reporter_role: reporterRole,
+        reporter_role: reporterRole as any,
         status: 'PENDING',
       },
     })

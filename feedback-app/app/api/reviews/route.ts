@@ -7,7 +7,8 @@ import { getCurrentUser } from "@/lib/current-user"
 type ReviewRole = "driver" | "rider"
 
 function normalizeUserRole(role: ReviewRole) {
-  return role === "driver" ? "DRIVER" : "PASSENGER"
+  const r = String(role).toLowerCase()
+  return r === "driver" ? "driver" : "rider"
 }
 
 function parseTripDate(tripDate: unknown) {
@@ -35,7 +36,7 @@ export async function GET() {
     return new Response("Unauthorized", { status: 401 })
   }
 
-  if (user.role !== "ADMIN") {
+  if (user.role !== "admin") {
     return new Response("Forbidden", { status: 403 })
   }
 
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
       return new Response("Unauthorized", { status: 401 })
     }
 
-    if (user.role !== "ADMIN") {
+    if (user.role !== "admin") {
       return new Response("Forbidden", { status: 403 })
     }
 
@@ -127,9 +128,9 @@ export async function POST(req: Request) {
         pool_id,
         reservation_id: reservation_id ?? null,
         author_user_id,
-        author_role,
+        author_role: normalizeUserRole(author_role),
         target_user_id,
-        target_role,
+        target_role: normalizeUserRole(target_role),
         rating,
         comment: comment ?? null,
         status: "COMPLETED",

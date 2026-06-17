@@ -77,7 +77,7 @@ export default async function PassengerTripsPage() {
     redirect("/sign-in")
   }
 
-  if (user.role !== "PASSENGER") {
+  if (user.role !== "rider") {
     redirect("/dashboard")
   }
 
@@ -97,7 +97,7 @@ export default async function PassengerTripsPage() {
 
     <div className="ws-page">
 
-      <Navbar role={user.role} displayName={user.name} />
+      <Navbar role={user.role} displayName={user.name ?? "Pasajero"} />
 
       <main className="ws-container">
 
