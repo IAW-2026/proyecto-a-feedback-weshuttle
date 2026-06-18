@@ -18,7 +18,7 @@ export type CreateAdminReviewInput = {
 }
 
 function normalizeRole(role: ReviewRole) {
-  return role === "driver" ? "DRIVER" : "PASSENGER"
+  return role === "driver" ? "driver" : "rider"
 }
 
 function parseTripDate(tripDate: string | Date | null | undefined) {
