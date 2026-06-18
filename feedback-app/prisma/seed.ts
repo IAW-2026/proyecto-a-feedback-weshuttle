@@ -40,7 +40,7 @@ const targetDriverId = 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
   await prisma.review.deleteMany({
     where: {
       id: {
-        startsWith: 'seed_review_trip_',
+        startsWith: 'seed_review_',
       },
     },
   })
@@ -89,13 +89,13 @@ const targetDriverId = 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
 }
 
   const seedReviews = [
-    { authorId: passengers[0].id, rating: 1, comment: 'Muy mala experiencia, hubo demoras y desorganización.' },
-    { authorId: passengers[1].id, rating: 1, comment: 'No me sentí cómodo durante el viaje, faltó atención.' },
-    { authorId: passengers[2].id, rating: 2, comment: 'El viaje cumplió, pero hubo varios puntos a mejorar.' },
-    { authorId: passengers[3].id, rating: 2, comment: 'Regular: aceptable, aunque con retrasos y poca comunicación.' },
-    { authorId: passengers[4].id, rating: 3, comment: 'Experiencia promedio, sin mayores problemas ni destacables.' },
-    { authorId: passengers[5].id, rating: 3, comment: 'Correcto y en línea con lo esperado para el trayecto.' },
-    { authorId: passengers[6].id, rating: 4, comment: 'Muy buen viaje, puntual y con buen trato.' },
+    { authorId: passengers[0].id, rating: 5, comment: 'Muy mala experiencia, hubo demoras y desorganización.' },
+    { authorId: passengers[1].id, rating: 5, comment: 'No me sentí cómodo durante el viaje, faltó atención.' },
+    { authorId: passengers[2].id, rating: 5, comment: 'El viaje cumplió, pero hubo varios puntos a mejorar.' },
+    { authorId: passengers[3].id, rating: 4, comment: 'Regular: aceptable, aunque con retrasos y poca comunicación.' },
+    { authorId: passengers[4].id, rating: 5, comment: 'Experiencia promedio, sin mayores problemas ni destacables.' },
+    { authorId: passengers[5].id, rating: 5, comment: 'Correcto y en línea con lo esperado para el trayecto.' },
+    { authorId: passengers[6].id, rating: 5, comment: 'Muy buen viaje, puntual y con buen trato.' },
     { authorId: passengers[7].id, rating: 4, comment: 'Casi excelente, manejo seguro y comunicación clara.' },
     { authorId: passengers[8].id, rating: 5, comment: 'Excelente servicio, todo perfecto de principio a fin.' },
     { authorId: passengers[9].id, rating: 5, comment: 'Viaje impecable, súper recomendable.' },
@@ -105,13 +105,13 @@ const targetDriverId = 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
     { authorId: passengers2[0].id, rating: 5, comment: 'Excelente experiencia.' },
     { authorId: passengers2[1].id, rating: 4, comment: 'Muy buen viaje.' },
     { authorId: passengers2[2].id, rating: 5, comment: 'Todo perfecto.' },
-    { authorId: passengers2[3].id, rating: 3, comment: 'Correcto.' },
+    { authorId: passengers2[3].id, rating: 5, comment: 'Correcto.' },
     { authorId: passengers2[4].id, rating: 4, comment: 'Buen conductor.' },
     { authorId: passengers2[5].id, rating: 5, comment: 'Muy recomendable.' },
-    { authorId: passengers2[6].id, rating: 4, comment: 'Muy conforme.' },
+    { authorId: passengers2[6].id, rating: 5, comment: 'Muy conforme.' },
     { authorId: passengers2[7].id, rating: 5, comment: 'Excelente trato.' },
-    { authorId: passengers2[8].id, rating: 3, comment: 'Sin inconvenientes.' },
-    { authorId: passengers2[9].id, rating: 4, comment: 'Buen servicio.' },
+    { authorId: passengers2[8].id, rating: 5, comment: 'Sin inconvenientes.' },
+    { authorId: passengers2[9].id, rating: 5, comment: 'Buen servicio.' },
   ]
 
   for (let i = 0; i < seedReviews.length; i++) {
@@ -159,14 +159,14 @@ const targetDriverId = 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
   await prisma.ratingAverage.upsert({
     where: { user_id_role: { user_id: targetDriverId, role: 'driver' } },
     update: {
-      average_rating: 3.0,
-      total_reviews: 10,
+      average_rating: 4.8,
+      total_reviews: 20,
     },
     create: {
       user_id: targetDriverId,
       role: 'driver',
-      average_rating: 3.0,
-      total_reviews: 10,
+      average_rating: 4.8,
+      total_reviews: 20,
     },
   })
 

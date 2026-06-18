@@ -13,7 +13,7 @@ export default function Navbar({ role, displayName }: NavbarProps) {
   const { user, isSignedIn } = useUser()
 
   const homeHref =
-    role === "DRIVER"
+    role === "driver"
       ? "/dashboard/driver"
       : "/dashboard"
 

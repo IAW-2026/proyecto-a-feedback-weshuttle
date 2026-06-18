@@ -35,7 +35,7 @@ export default function AdminReportsTable({ initialReports }: Props) {
   const [reports, setReports] = useState(initialReports)
   const [expandedTrips, setExpandedTrips] = useState<Record<string, boolean>>({})
   const [updatingReportId, setIsUpdating] = useState<string | null>(null)
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'RIDER' | 'DRIVER'>('ALL')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'rider' | 'driver'>('all')
   const [currentPage, setCurrentPage] = useState(1)
 
   // Estado para el Toast
@@ -58,7 +58,7 @@ export default function AdminReportsTable({ initialReports }: Props) {
   const reportsByTrip = useMemo(() => {
     const groups: Record<string, ReportItem[]> = {}
     
-    const filtered = roleFilter === 'ALL' 
+    const filtered = roleFilter === 'all' 
       ? reports 
       : reports.filter(r => r.reporter_role === roleFilter)
 
@@ -154,20 +154,20 @@ export default function AdminReportsTable({ initialReports }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-2 rounded-2xl border border-[var(--ws-outline)] shadow-sm">
         <div className="flex gap-2">
           <button
-            onClick={() => { setRoleFilter('ALL'); setCurrentPage(1); }}
-            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'ALL' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
+            onClick={() => { setRoleFilter('all'); setCurrentPage(1); }}
+            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'all' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
           >
             Todos
           </button>
           <button
-            onClick={() => { setRoleFilter('RIDER'); setCurrentPage(1); }}
-            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'RIDER' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
+            onClick={() => { setRoleFilter('rider'); setCurrentPage(1); }}
+            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'rider' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
           >
             Pasajeros
           </button>
           <button
-            onClick={() => { setRoleFilter('DRIVER'); setCurrentPage(1); }}
-            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'DRIVER' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
+            onClick={() => { setRoleFilter('driver'); setCurrentPage(1); }}
+            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'driver' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
           >
             Conductores
           </button>

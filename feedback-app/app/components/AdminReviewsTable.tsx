@@ -32,7 +32,7 @@ type Review = {
 type TripParticipant = {
   id: string
   name: string | null
-  role: "DRIVER" | "PASSENGER"
+  role: "driver" | "rider"
   reservationId: string | null
 }
 
@@ -44,14 +44,14 @@ type TripGroup = {
   passengers: TripParticipant[]
 }
 
-type CreateMode = "DRIVER" | "PASSENGER"
+type CreateMode = "driver" | "rider"
 
 function formatTripKeyDate(date: Date) {
   return new Intl.DateTimeFormat("es-AR", { dateStyle: "long" }).format(date)
 }
 
 function toReviewRole(role: TripParticipant["role"]) {
-  return role === "DRIVER" ? "driver" : "rider"
+  return role === "driver" ? "driver" : "rider"
 }
 
 function groupReviewsByTrip(reviewsList: Review[]) {
@@ -69,7 +69,7 @@ function groupReviewsByTrip(reviewsList: Review[]) {
       const participantMap = new Map<string, TripParticipant>()
 
       const addParticipant = (user: User | null, reservationId: string | null) => {
-        if (!user || (user.role !== "DRIVER" && user.role !== "PASSENGER")) return
+        if (!user || (user.role !== "driver" && user.role !== "rider")) return
 
         const nextRole = user.role as TripParticipant["role"]
         const current = participantMap.get(user.id)
@@ -102,9 +102,9 @@ function groupReviewsByTrip(reviewsList: Review[]) {
       const createdGroup = groups.get(review.pool_id)
       if (createdGroup) {
         const participants = Array.from(participantMap.values())
-        createdGroup.driver = participants.find((participant) => participant.role === "DRIVER") ?? null
+        createdGroup.driver = participants.find((participant) => participant.role === "driver") ?? null
         createdGroup.passengers = participants
-          .filter((participant) => participant.role === "PASSENGER")
+          .filter((participant) => participant.role === "rider")
           .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id, "es-AR"))
       }
 
@@ -114,13 +114,13 @@ function groupReviewsByTrip(reviewsList: Review[]) {
     existing.reviews.push(review)
 
     const addParticipant = (user: User | null, reservationId: string | null) => {
-      if (!user || (user.role !== "DRIVER" && user.role !== "PASSENGER")) return
+      if (!user || (user.role !== "driver" && user.role !== "rider")) return
 
       const nextRole = user.role as TripParticipant["role"]
-      const currentList = nextRole === "DRIVER" ? [existing.driver].filter(Boolean) as TripParticipant[] : existing.passengers
+      const currentList = nextRole === "driver" ? [existing.driver].filter(Boolean) as TripParticipant[] : existing.passengers
       const current = currentList.find((participant) => participant.id === user.id)
 
-      if (nextRole === "DRIVER") {
+      if (nextRole === "driver") {
         if (!current) {
           existing.driver = {
             id: user.id,
@@ -176,7 +176,7 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [createTrip, setCreateTrip] = useState<TripGroup | null>(null)
-  const [createMode, setCreateMode] = useState<CreateMode>("DRIVER")
+  const [createMode, setCreateMode] = useState<CreateMode>("driver")
   const [createPassengerAuthorId, setCreatePassengerAuthorId] = useState<string>("")
   const [createPassengerTargetId, setCreatePassengerTargetId] = useState<string>("")
   const [createRating, setCreateRating] = useState<number>(5)
@@ -215,7 +215,7 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
 
   const openCreateModal = (trip: TripGroup) => {
     setCreateTrip(trip)
-    setCreateMode("DRIVER")
+    setCreateMode("driver")
     setCreatePassengerAuthorId(trip.passengers[0]?.id ?? "")
     setCreatePassengerTargetId(trip.passengers[0]?.id ?? "")
     setCreateRating(5)
@@ -262,11 +262,11 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
       return
     }
 
-    const author = createMode === "DRIVER"
+    const author = createMode === "driver"
       ? driver
       : createTrip.passengers.find((participant) => participant.id === createPassengerAuthorId)
 
-    const target = createMode === "DRIVER"
+    const target = createMode === "driver"
       ? createTrip.passengers.find((participant) => participant.id === createPassengerTargetId)
       : driver
 
@@ -286,7 +286,7 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
     }
 
     const reservationId =
-      createMode === "DRIVER"
+      createMode === "driver"
         ? target.reservationId
         : author.reservationId
 
@@ -551,12 +551,12 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
                 onChange={(e) => setCreateMode(e.target.value as CreateMode)}
                 className="ws-select"
               >
-                <option value="DRIVER">Driver del viaje</option>
-                <option value="PASSENGER">Pasajero del viaje</option>
+                <option value="driver">Driver del viaje</option>
+                <option value="rider">Pasajero del viaje</option>
               </select>
             </div>
 
-            {createMode === "DRIVER" ? (
+            {createMode === "driver" ? (
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Pasajero a calificar</label>
                 <select

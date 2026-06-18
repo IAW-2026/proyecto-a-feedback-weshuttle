@@ -87,7 +87,7 @@ export async function PATCH(req: Request, context: RouteContext) {
   if (body.admin) {
     const currentUser = await getCurrentUser()
 
-    if (!currentUser || currentUser.role !== "ADMIN") {
+    if (!currentUser || currentUser.role !== "admin") {
       return new Response("Forbidden", { status: 403 })
     }
   } else {
@@ -128,7 +128,7 @@ export async function DELETE(req: Request, context: RouteContext) {
 
   const currentUser = await getCurrentUser()
 
-  if (!currentUser || currentUser.role !== "ADMIN") {
+  if (!currentUser || currentUser.role !== "admin") {
     return new Response("Forbidden", { status: 403 })
   }
 

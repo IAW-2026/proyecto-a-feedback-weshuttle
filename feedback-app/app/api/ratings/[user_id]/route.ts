@@ -21,20 +21,20 @@ export async function GET(
   })
 
   const total_reviews = reviews.length
-    // Esta constante representa la suma total de las calificaciones 
-    // de las reseñas, considerando que algunas pueden no tener calificación (rating) 
-    // y en ese caso se sumaría 0.
-    // acc representa un acumulador que se va actualizando con cada iteración del reduce,
-    // y review representa cada reseña individual en la iteración actual.
-    const sum = reviews.reduce(
+  // Esta constante representa la suma total de las calificaciones 
+  // de las reseñas, considerando que algunas pueden no tener calificación (rating) 
+  // y en ese caso se sumaría 0.
+  // acc representa un acumulador que se va actualizando con cada iteración del reduce,
+  // y review representa cada reseña individual en la iteración actual.
+  const sum = reviews.reduce(
     (acc: number, review: any) => acc + (review.rating || 0),
     0
-    )
+  )
 
-    const average_rating =
+  const average_rating =
     total_reviews === 0
-        ? null
-        : sum / total_reviews
+      ? null
+      : Number((sum / total_reviews).toFixed(1))
 
   return Response.json({
     user_id,

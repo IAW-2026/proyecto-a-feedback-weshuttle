@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       )
     }
 
-    if (user.role !== "ADMIN" && user.role !== "DRIVER") {
+    if (user.role !== "admin" && user.role !== "driver") {
       return NextResponse.json(
         { error: "FORBIDDEN", message: "Insufficient permissions" },
         { status: 403 }
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       )
     }
 
-    if (user.role === "DRIVER") {
+    if (user.role === "driver") {
       const accessibleReview = await prisma.review.findFirst({
         where: {
           pool_id: body.pool_id,
