@@ -1,3 +1,6 @@
+// API Externa llamada por la Driver App al finalizar un viaje, 
+// para pre-crear las reseñas entre conductor y pasajeros. 
+// Solo debería ser accedida por la Driver App.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -122,7 +125,7 @@ export async function POST(req: Request) {
       create: {
         id: driver_user_id,
         name: driver_name || "Conductor WeShuttle", 
-        role: 'DRIVER',
+        role: 'driver',
       },
     });
 
@@ -148,7 +151,7 @@ export async function POST(req: Request) {
         create: {
           id: passenger.passenger_user_id,
           name: passenger.passenger_name,
-          role: 'PASSENGER',
+          role: 'rider',
         },
       });
 

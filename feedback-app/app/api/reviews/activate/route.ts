@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getCurrentUser } from "@/lib/current-user"
-
+// Funciona como interruptor para cambiar el status de las reseñas de 
+// PRECREATED a PENDING, lo que habilita a los usuarios a completar las reseñas. 
+// Solo puede ser accedida por admins y drivers, y los drivers solo pueden activar reseñas de pools a los que tengan acceso (es decir, pools donde sean el autor de alguna reseña).
 type ActivateReviewsRequestBody = {
   pool_id: string
 }

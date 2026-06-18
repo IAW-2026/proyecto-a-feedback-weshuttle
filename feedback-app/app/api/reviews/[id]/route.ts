@@ -1,3 +1,5 @@
+// API interna para que admins puedan editar o eliminar 
+// reseñas existentes.
 import { prisma } from "@/lib/prisma"
 import { getCurrentUser } from "@/lib/current-user"
 

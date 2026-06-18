@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { prisma } from "../../../lib/prisma"
 import Navbar from "../../components/NavBar"
 import { redirect } from "next/navigation"
@@ -20,7 +21,7 @@ async function createAdminReviewAction(input: CreateAdminReviewInput) {
     throw new Error("UNAUTHORIZED")
   }
 
-  if (user.role !== "ADMIN") {
+  if (user.role !== "admin") {
     throw new Error("FORBIDDEN")
   }
 
@@ -31,12 +32,16 @@ export default async function AdminDashboard() {
   const user = await getCurrentUser()
 
   if (!user) redirect('/sign-in')
-  if (user.role !== 'ADMIN') redirect('/dashboard')
+  if (user.role !== 'admin') redirect('/dashboard')
 
   const reviews: ReviewWithUsers[] = await prisma.review.findMany({
     include: { author: true, recipient: true },
     orderBy: { createdAt: 'desc' },
     take: 200,
+  })
+
+  const pendingReportsCount = await prisma.report.count({
+    where: { status: 'PENDING' }
   })
 
   const total = reviews.length
@@ -68,6 +73,20 @@ export default async function AdminDashboard() {
             <p className="text-[var(--ws-slate)] max-w-xl leading-relaxed">
               Gestioná las reseñas de pasajeros y conductores: crear, ver, editar y eliminar.
             </p>
+
+            <div className="mt-8 flex items-center gap-4">
+              <Link 
+                href="/dashboard/admin/reports" 
+                className="ws-secondary-button inline-flex items-center gap-3 px-6 py-3 text-[10px] font-black uppercase tracking-[0.15em] text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200 transition-all active:scale-95 shadow-sm"
+              >
+                <span>Gestión de Reportes</span>
+                {pendingReportsCount > 0 && (
+                  <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">
+                    {pendingReportsCount}
+                  </span>
+                )}
+              </Link>
+            </div>
           </div>
 
           <ProfileNameEditor initialName={user.name} />
@@ -121,4 +140,3 @@ export default async function AdminDashboard() {
     </div>
   )
 }
-

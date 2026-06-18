@@ -12,8 +12,12 @@ export async function getCurrentUser() {
 
   // Preferimos el role ya presente en la base de datos (por si fue seteado manualmente).
   // Solo usamos el publicMetadata de Clerk para crear el usuario inicial si no existe.
-  const clerkRole = (clerkUser.publicMetadata.role as string | undefined)?.toUpperCase()
-  const inferredRole = clerkRole === "DRIVER" ? "DRIVER" : clerkRole === "ADMIN" ? "ADMIN" : "PASSENGER"
+  const rawRole = (clerkUser.publicMetadata?.role as string | undefined)?.toLowerCase()
+  
+  // Validamos que el rol sea uno de los permitidos por el Enum de Prisma
+  const inferredRole = (rawRole === "driver" || rawRole === "admin" || rawRole === "rider") 
+    ? (rawRole as "driver" | "admin" | "rider")
+    : "rider"
 
   // Si el usuario ya existe en DB, respetamos su role y solo actualizamos el nombre.
   const existing = await prisma.user.findUnique({ where: { id: clerkUser.id } })

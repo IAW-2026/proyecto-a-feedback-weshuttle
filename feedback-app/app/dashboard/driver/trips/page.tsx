@@ -101,7 +101,7 @@ export default async function DriverTripsPage() {
     redirect("/sign-in")
   }
 
-  if (user.role !== "DRIVER") {
+  if (user.role !== "driver") {
     redirect("/dashboard")
   }
 
@@ -160,7 +160,7 @@ export default async function DriverTripsPage() {
             href="/dashboard/driver"
             className="ws-secondary-button"
           >
-            Volver al dashboard
+            Volver al inicio
           </Link>
 
         </section>

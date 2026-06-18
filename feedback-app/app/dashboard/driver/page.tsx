@@ -113,8 +113,12 @@ export default async function DriverDashboard() {
     redirect("/sign-in")
   }
 
-  if (user.role !== "DRIVER") {
-    redirect("/dashboard")
+  if (user.role === "admin") {
+    redirect("/dashboard/admin")
+  }
+
+  if (user.role === "rider") {
+    redirect("/dashboard/passenger")
   }
 
   const activePoolId = await getLatestDriverSimulationPoolId(user.id)
@@ -164,7 +168,7 @@ export default async function DriverDashboard() {
   return (
     <div className="ws-page">
 
-      <Navbar role={user.role} displayName={user.name} />
+      <Navbar role={user.role} displayName={user.name ?? "Conductor"} />
 
       <main className="ws-container">
 
@@ -187,7 +191,7 @@ export default async function DriverDashboard() {
 
           </div>
 
-          <ProfileNameEditor initialName={user.name} />
+          <ProfileNameEditor initialName={user.name ?? ""} />
 
         </section>
 

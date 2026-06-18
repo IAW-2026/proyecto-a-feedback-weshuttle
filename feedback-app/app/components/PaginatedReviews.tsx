@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import ReportReviewModal from "./ReportReviewModal"
 
 type ReviewItem = {
   id: string
@@ -9,15 +10,17 @@ type ReviewItem = {
   rating: number | null
   comment: string | null
   dateLabel: string
+  isReported?: boolean
 }
 
 type Props = {
   reviews: ReviewItem[]
+  currentUserRole: "driver" | "rider"
 }
 
 const pageSize = 3
 
-export default function PaginatedReviews({ reviews }: Props) {
+export default function PaginatedReviews({ reviews, currentUserRole }: Props) {
   const [currentPage, setCurrentPage] = useState(1)
 
   const totalPages = Math.max(1, Math.ceil(reviews.length / pageSize))
@@ -26,7 +29,8 @@ export default function PaginatedReviews({ reviews }: Props) {
     const start = (currentPage - 1) * pageSize
     return reviews.slice(start, start + pageSize)
   }, [currentPage, reviews])
-
+// constante que define la función goToPage, que se encarga de actualizar 
+// el estado currentPage para navegar entre las páginas de reseñas.
   const goToPage = (page: number) => {
     setCurrentPage(Math.min(Math.max(page, 1), totalPages))
   }
@@ -51,7 +55,9 @@ export default function PaginatedReviews({ reviews }: Props) {
               className="ws-secondary-button h-11 min-h-11 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página anterior"
             >
-              ←
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
 
             <div className="flex items-center gap-2">
@@ -80,7 +86,9 @@ export default function PaginatedReviews({ reviews }: Props) {
               className="ws-secondary-button h-11 min-h-11 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página siguiente"
             >
-              →
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           </div>
         )}
@@ -92,7 +100,7 @@ export default function PaginatedReviews({ reviews }: Props) {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
               <div>
                 <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
-                  Pasajero
+                  {currentUserRole === "driver" ? "Pasajero" : "Conductor"}
                 </p>
 
                 <h2 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
@@ -115,9 +123,19 @@ export default function PaginatedReviews({ reviews }: Props) {
               {"★".repeat(review.rating || 0)}
             </div>
 
-            <p className="text-lg leading-relaxed text-[var(--ws-midnight)]">
-              {review.comment || "Sin comentario registrado."}
-            </p>
+            <div className="space-y-4">
+              <p className="text-lg leading-relaxed text-[var(--ws-midnight)]">
+                {review.comment || "Sin comentario registrado."}
+              </p>
+
+              <div className="flex justify-end pt-4 border-t border-[var(--ws-outline)]">
+                <ReportReviewModal 
+                  reviewId={review.id} 
+                  reporterRole={currentUserRole} 
+                  initialIsReported={review.isReported}
+                />
+              </div>
+            </div>
           </article>
         ))}
       </div>

@@ -21,7 +21,9 @@ async function getReviews(userId: string): Promise<ReviewWithUsers[]> {
           {
             author_user_id: userId,
             author_role: "rider",
-            status: "PENDING"
+            status: {
+              in: ["PRECREATED", "PENDING"]
+            }
           },
 
           // Reviews recibidas por el pasajero
@@ -59,8 +61,12 @@ export default async function PassengerDashboard() {
     redirect("/sign-in")
   }
 
-  if (user.role !== "PASSENGER") {
-    redirect("/dashboard")
+  if (user.role === "admin") {
+    redirect("/dashboard/admin")
+  }
+
+  if (user.role === "driver") {
+    redirect("/dashboard/driver")
   }
 
   const reviews = await getReviews(user.id)
@@ -73,7 +79,7 @@ export default async function PassengerDashboard() {
 
   const pendingReviews = reviews.filter(
     (review) =>
-      review.status === "PENDING" &&
+      review.status !== "COMPLETED" &&
       review.author_user_id === user.id
   )
 
@@ -90,7 +96,7 @@ export default async function PassengerDashboard() {
   return (
     <div className="ws-page">
 
-      <Navbar role={user.role} displayName={user.name} />
+      <Navbar role={user.role} displayName={user.name ?? "Pasajero"} />
 
       <main className="ws-container">
 
@@ -113,7 +119,7 @@ export default async function PassengerDashboard() {
 
           </div>
 
-          <ProfileNameEditor initialName={user.name} />
+          <ProfileNameEditor initialName={user.name ?? ""} />
 
         </section>
 

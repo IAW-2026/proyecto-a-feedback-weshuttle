@@ -1,3 +1,4 @@
+// API interna para el usuario pueda actualizar su nombre.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getCurrentUser } from "@/lib/current-user"

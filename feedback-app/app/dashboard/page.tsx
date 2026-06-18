@@ -11,10 +11,10 @@ export default async function DashboardPage() {
 
   switch (user.role) {
 
-    case "ADMIN":
+    case "admin":
       redirect("/dashboard/admin")
 
-    case "DRIVER":
+    case "driver":
       redirect("/dashboard/driver")
 
     default:
