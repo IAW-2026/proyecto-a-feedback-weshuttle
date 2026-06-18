@@ -54,16 +54,14 @@ async function getDriverReviews(userId: string, poolId: string | null): Promise<
   try {
     const reviews = await prisma.review.findMany({
       where: {
-        ...(poolId
-          ? {
-              pool_id: poolId,
-            }
-          : {
-              OR: [
-                { target_user_id: userId, status: "COMPLETED" },
-                { author_user_id: userId, author_role: "driver", status: "PENDING" },
-              ],
-            }),
+        OR: [
+          // 1. Siempre traer la reputación histórica (reseñas que recibí)
+          { target_user_id: userId, status: "COMPLETED" },
+          // 2. Traer las reseñas que tengo pendientes de enviar (mi trabajo actual)
+          { author_user_id: userId, author_role: "driver", status: { in: ["PRECREATED", "PENDING"] } },
+          // 3. Si hay un pool específico activo, asegurar que traemos sus reseñas
+          ...(poolId ? [{ pool_id: poolId }] : [])
+        ]
       },
 
       include: {
