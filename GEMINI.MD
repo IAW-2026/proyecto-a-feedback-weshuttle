@@ -8,7 +8,7 @@
 ## Actores del sistema
 | Actor | Descripción | Apps donde interactúa |
 |-------|-------------|----------------------|
-| **Pasajero (Rider)** | Reserva su lugar en pools, visualiza precios estimados y recibe el cobro automático 1 hora antes del viaje. Al finalizar su viaje puede realizar una reseña al conductor | Rider, Payments, Feedback |
+| **Pasajero (Rider)** | Reserva su lugar en pools, visualiza precios estimados, paga el precio máximo al momento de reservar y recibe saldo a favor si el precio final del viaje resulta menor por la ocupación del pool. Al finalizar su viaje puede realizar una reseña al conductor. | Rider, Payments, Feedback |
 | **Conductor (Driver)** | Acepta viajes del marketplace, actualiza el estado del recorrido, recibe su liquidación y puede realizar una reseña a cada pasajero. | Driver, Payments, Feedback |
 | **Administrador** | Gestiona los datos principales de cada app y visualiza listados y reportes | Rider, Driver, Payments, Feedback y posteriormente Control Plane|
 
@@ -18,11 +18,20 @@
 
 #### Estados de la reserva en Rider App
 
-- `PENDING_DRIVER`: la reserva fue creada por el pasajero, pero el pool todavía no tiene conductor asignado.
-- `CONFIRMED`: el pool ya tiene conductor asignado.
-- `PAID`: el cobro automático de la reserva fue exitoso.
-- `DENIED`: el cobro automático de la reserva fue rechazado.
+- `PENDING_PAYMENT`: la reserva fue creada, pero todavía no tiene pago exitoso.
+- `PENDING_DRIVER`: la reserva ya fue pagada, pero el pool todavía no tiene conductor asignado.
+- `CONFIRMED`: la reserva ya fue pagada y el pool tiene conductor asignado.
 - `CANCELED`: la reserva fue cancelada.
+- `CANCELED`: el checkout fue cancelado por el usuario.
+- `EXPIRED`: el checkout venció sin pago exitoso.
+
+
+#### Estados de pago de la reserva
+
+- `UNPAID`: la reserva todavía no fue pagada.
+- `PENDING`: el pago fue iniciado pero todavía no fue confirmado.
+- `PAID`: el pago fue exitoso.
+- `DENIED`: el pago fue rechazado.
 
 #### Estados del pool en Driver App
 
@@ -43,20 +52,18 @@
 
 ## 1. Solicitud de viaje y cotización
 
-Antes de poder solicitar un viaje, el pasajero debe ser redirigido a la **Payments App** para cargar su cuenta de Mercado Pago, que será utilizada para el cobro automático del viaje.
-
-Luego, el pasajero solicita un viaje desde la **Rider App**. La brecha horaria permitida para reservar un viaje es desde 24 horas hasta 1 hora antes de la partida.
+El pasajero solicita un viaje desde la **Rider App**. La brecha horaria permitida para reservar un viaje es desde 24 horas hasta 1 hora antes de la partida.
 
 El usuario selecciona el destino y el horario del viaje. Luego, la **Rider App** consulta a la **Driver App** si ya existe un pool creado para ese destino y horario.
 
 - Si existe un pool, la **Driver App** devuelve la cantidad de pasajeros actuales y el `pool_id` correspondiente.
 - Si no existe un pool, la **Driver App** devuelve ocupación `0` y `pool_id = NULL`.
 
-Con esta información, la **Rider App** consulta a la **Payments App** el precio máximo y el precio estimado del viaje, enviando el destino, el origen y la ocupación actual del pool.
+Con esta información, la **Rider App** consulta a la **Payments App** el precio máximo que el usuario va a pagar y el precio estimado del viaje(la diferencia a favor del usuario luego sera devuelta en forma de credito para proximos viajes), enviando el destino, el origen y la ocupación actual del pool.
 
 La **Payments App** devuelve:
 
-- el precio máximo que el pasajero podría llegar a pagar;
+- el precio máximo que el pasajero va a pagar;
 - el precio estimado según la ocupación actual del pool.
 
 Con estos datos, el pasajero puede visualizar los posibles costos del viaje antes de confirmar la reserva.
@@ -65,19 +72,33 @@ Si al momento de solicitar el viaje ya existe un pool para ese destino y horario
 
 Para esto, la **Rider App** obtiene la información del conductor desde la **Driver App** y su promedio de estrellas desde la **Feedback App**.
 
+Antes de confirmar definitivamente la reserva, el pasajero será redirigido a la **Payments App** para realizar el pago del viaje.
+
+La **Payments App** cobrará el precio máximo informado para la reserva. Si el pasajero tiene saldo a favor disponible, este se aplicará primero. Si el saldo no alcanza para cubrir el precio máximo, se cobrará la diferencia mediante Mercado Pago.
+
 ---
 
 ## 2. Reserva e inmutabilidad
 
-Cuando el pasajero confirma la reserva, la **Rider App** crea una reserva en estado `PENDING_DRIVER` o `CONFIRMED` dependiendo de si el pool asociado tiene un conductor asignado o no.
+Cuando el pasajero decide reservar, la **Rider App** crea una reserva en estado `PENDING_PAYMENT` y con `payment_status = UNPAID`.
+
+Esta reserva todavía no incrementa la ocupación del pool.
+
+Luego, la **Rider App** redirige al pasajero a la **Payments App** para realizar el pago del precio máximo.
+
+Cuando la **Payments App** confirma el pago exitoso, notifica a la **Rider App**. En ese momento:
+
+- la reserva actualiza `payment_status = PAID`;
+- la reserva pasa a `PENDING_DRIVER` o `CONFIRMED`, según si el pool tiene conductor asignado o no;
+- la **Rider App** notifica a la **Driver App** que debe sumar esa reserva al pool.
 
 La **Rider App** guarda un snapshot comercial e inmutable de la reserva, que incluye:
 
 - destino;
 - horario;
-- precio máximo que el pasajero podría llegar a pagar.
+- precio máximo que el pasajero termino pagando.
 
-El precio máximo guardado representa el límite superior del cobro. El precio final nunca puede superar ese valor; a lo sumo, puede ser igual.
+El precio máximo guardado representa el límite superior del cobro que termina pagando el usuario. El precio final del viaje nunca puede superar ese valor; a lo sumo, puede ser igual.
 
 Si el usuario requiere un cambio posterior en el destino, horario u otra información relevante de la reserva, debe cancelar la reserva actual y crear una nueva.
 
@@ -86,7 +107,7 @@ Una vez creada la reserva:
 - si el pool ya existía, la **Rider App** notifica a la **Driver App** que debe incrementar en 1 la ocupación del pool;
 - si el pool no existía, la **Rider App** le solicita a la **Driver App** la creación de un nuevo pool y recibe el `pool_id` correspondiente.
 
-Cuando un pasajero cancela su reserva, la **Rider App** actualiza la reserva al estado `CANCELED` y notifica a la **Driver App**.
+Cuando un pasajero cancela su reserva, la **Rider App** actualiza la reserva al estado `CANCELED` y notifica a la **Driver App**. El viaje pagado queda como saldo a favor para la persona en futuros viajes. 
 
 La **Driver App** decrementa la ocupación del pool. Si el pool queda vacío, lo elimina o lo marca como `CANCELED`, según corresponda.
 
@@ -117,55 +138,35 @@ Si llega el momento de cierre del pool y ningún conductor aceptó el viaje, el 
 
 En ese caso:
 
-- las reservas asociadas al pool pasan a estado `CANCELED`;
+- las reservas pagadas asociadas al pool pasan a estado `CANCELED`;
 - la **Rider App** notifica a los pasajeros que el viaje fue cancelado por falta de conductor;
-- no se ejecutan cobros automáticos;
-- la **Payments App** no procesa ningún pago para ese pool.
+- la **Driver App** solicita a la **Payments App** que genere el ajuste de crédito correspondiente;
+- la **Payments App** acredita a cada pasajero el monto pagado como saldo a favor para próximos viajes.
 
 ---
 
-## 5. Cierre y cobro automático (T-1h)
+## 5. Cierre del pool y cálculo de saldo a favor (T-1h)
 
 Una hora antes de la partida, la **Driver App** cierra el pool cambiando su estado a `LOCKED`.
 
-El estado `LOCKED` bloquea nuevas reservas y cancelaciones voluntarias por parte de los usuarios. Sin embargo, no impide ajustes internos del sistema, como modificaciones de ocupación por pagos rechazados.
+El estado `LOCKED` bloquea nuevas reservas y cancelaciones voluntarias por parte de los usuarios.
 
-Al bloquear el pool, la **Driver App** le informa a la **Payments App** que debe procesar el cobro automático para ese pool.
+En este momento ya no se realizan cobros automáticos, porque las reservas fueron pagadas al momento de crearse.
 
-La **Payments App** utiliza el `pool_id` para solicitarle a la **Rider App** el manifiesto de pasajeros asociado al pool.
+Al bloquear el pool, la **Driver App** solicita a la **Payments App** que calcule los ajustes de crédito correspondientes al pool.
 
-El precio final real se define en este momento, al ejecutar el cobro automático. Este precio depende de la ocupación del pool al momento T-1h.
+La **Payments App** utiliza el `pool_id` para solicitarle a la **Rider App** el manifiesto de pasajeros pagados asociado al pool.
 
-Si se sumaron más pasajeros después de que un usuario hizo su reserva, no se realiza ningún ajuste inmediato sobre su reserva. El cálculo definitivo se realiza únicamente al momento del cierre y cobro automático.
+El precio final real se define en este momento y depende de la ocupación del pool al momento T-1h.
 
-El precio final:
+La **Payments App** compara, para cada reserva pagada:
 
-- depende de la ocupación del pool al momento T-1h;
-- puede ser menor o igual al precio máximo informado inicialmente y guardado en el snapshot de la reserva.
+- el precio máximo pagado al momento de reservar;
+- el precio final calculado según la ocupación del pool.
 
-Cuando un pago es exitoso, la **Payments App** notifica a la **Rider App** para que actualice la reserva correspondiente al estado `PAID`.
+Si el precio final es menor que el precio máximo pagado, la diferencia se acredita como saldo a favor para próximos viajes.
 
-En esa misma notificación, la **Payments App** informa el precio efectivamente cobrado al pasajero luego de aplicar descuentos, promociones o ajustes correspondientes.
-
-La **Rider App** guarda ese valor en el atributo `effective_price` de la reserva. Este valor será utilizado para mostrarle al pasajero cuánto pagó realmente por el viaje, tanto al momento de confirmarse el cobro como en el resumen e historial de viajes.
-
-Adicionalmente, el usuario desde la **Payments App** puede consultar el detalle del pago de una reserva.
-
-Cuando un pago es rechazado, la **Payments App** notifica a la **Rider App** para que actualice la reserva correspondiente al estado `DENIED`. Además, notifica a la **Driver App** para que baje la ocupación del pool.
-
-Si algunos pagos son rechazados, no se recalcula el precio para el resto de los pasajeros por simplicidad del sistema. Esta mejora podrá evaluarse en futuras etapas.
-
-Si, luego de procesar los pagos rechazados, el pool queda vacío, el viaje se cancela.
-
-Los pasajeros con reservas en estado `DENIED`:
-
-- no forman parte del manifiesto final del viaje;
-- no aparecen en el recorrido del conductor;
-- no reciben seguimiento del viaje;
-- no pueden reseñar ese viaje;
-- deben visualizar en la **Rider App** que su reserva fue rechazada por un problema en el pago.
-
----
+Luego, la **Payments App** notifica a la **Rider App** el resultado del ajuste para que pueda actualizar la reserva y mostrar una notificación al pasajero indicando que tiene saldo a favor.
 
 ## 6. Ejecución y seguimiento del viaje
 
@@ -250,9 +251,6 @@ Además, el usuario puede:
 - consultar su promedio de estrellas;
 - visualizar los reportes recibidos según su rol: pasajero o conductor.
 
-
-
-
 # 1.2 — Asignación de Responsabilidades
 
 > **Tipo A — Plataforma de Transporte (WeShuttle)**
@@ -336,17 +334,30 @@ Responsabilidades principales:
 - Permitir que un pasajero solicite un viaje.
 - Crear reservas asociadas a pools.
 - Mantener los estados de reserva:
-  - `PENDING_DRIVER`
-  - `CONFIRMED`
-  - `PAID`
-  - `DENIED`
-  - `CANCELED`
+ - `PENDING_PAYMENT`: la reserva fue creada, pero todavía no tiene pago exitoso.
+ - `PENDING_DRIVER`: la reserva ya fue pagada, pero el pool todavía no tiene conductor asignado.
+ - `CONFIRMED`: la reserva ya fue pagada y el pool tiene conductor asignado.
+ - `CANCELED`: la reserva fue cancelada.
+- Mantener el estado de pago de la reserva
+  - `UNPAID`: la reserva todavía no fue pagada.
+  - `PENDING`: el pago fue iniciado pero todavía no fue confirmado.
+  - `PAID`: el pago fue exitoso.
+  - `DENIED`: el pago fue rechazado.
+  - `CANCELED`: el checkout fue cancelado por el usuario.
+  - `EXPIRED`: el checkout vencio sin pago exitoso.
 - Guardar los datos principales de la reserva para mantener su inmutabilidad.
+- Crear reservas inicialmente en estado `PENDING_PAYMENT`.
+- Redirigir al pasajero a Payments App para pagar la reserva.
+- Confirmar la reserva solo cuando Payments App informa pago exitoso.
+- Notificar a Driver App que una reserva se suma al pool solo después de que el pago fue exitoso.
+- Guardar el estado de pago de la reserva.
+- Guardar el precio máximo pagado, saldo aplicado, monto cobrado, precio final y saldo a favor generado.
+- Mostrar al pasajero notificaciones cuando se genere saldo a favor.
 - Informar a la Driver App cuando una reserva se suma a un pool.
 - Informar a la Driver App cuando una reserva se cancela.
 - Proveer el listado de pasajeros de un pool cuando otra app lo requiera.
 - Actualizar la reserva con el resultado del pago informado por Payments App.
-- Guardar el precio efectivo pagado para mostrarlo en el resumen e historial de viajes.
+- Guardar `amount_charged`, `credit_applied`, `final_trip_price` y `credit_granted` para mostrarlo en el resumen e historial de viajes.
 - Mostrar al pasajero el estado del viaje y la información disponible del conductor asignado.
 
 ---
@@ -370,14 +381,16 @@ Responsabilidades principales:
 
 - Calcular el precio máximo de un viaje.
 - Calcular el precio estimado según origen, destino y ocupación.
-- Procesar el cobro automático de las reservas al cierre del pool.
-- Aplicar descuentos o ajustes correspondientes.
-- Determinar el precio efectivo cobrado al pasajero.
+- Crear instancias de pago para reservas.
+- Aplicar saldo a favor disponible antes de cobrar.
+- Procesar el pago directo del pasajero al momento de reservar.
+- Registrar cobros y transacciones.
 - Informar a la Rider App el resultado del pago.
-- Informar a la Rider App el precio efectivo pagado.
-- Informar a la Driver App cuando un pago rechazado requiere ajustar la ocupación del pool.
+- Calcular el precio final del viaje al cierre T-1h según ocupación real.
+- Generar saldo a favor cuando el precio final sea menor al precio máximo pagado.
+- Mantener el saldo a favor de cada usuario.
+- Notificar a la Rider App cuando se genere saldo a favor para una reserva.
 - Procesar la liquidación al conductor cuando el viaje finaliza.
-
 ---
 
 ### Feedback App
@@ -424,11 +437,13 @@ Responsabilidades principales:
 | **Driver App** | Consultar el promedio de calificaciones de los pasajeros de un pool | **Feedback App** | `GET /api/ratings/pools/:pool_id/passengers` |
 | **Feedback App** | Consultar los pasajeros asociados a un pool para calcular sus calificaciones | **Rider App** | `GET /api/pools/:pool_id/passengers` |
 | **Driver App** | Notificar que un pool fue cancelado por falta de conductor asignado | **Rider App** | `POST /api/pools/:pool_id/cancellations` |
-| **Driver App** | Solicitar inicio de cobros automáticos al cerrar el pool en T-1h | **Payments App** | `POST /api/payments/pools/:pool_id/auto-charge` |
-| **Payments App** | Solicitar el manifiesto de pasajeros de un pool para procesar cobros | **Rider App** | `GET /api/pools/:pool_id/passengers` |
+| **Rider App** | Solicitar a Payments App la creación de un checkout para pagar una reserva | **Payments App** | `POST /api/payments/reservations/:reservation_id/checkout` |
+| **Driver App** | Solicitar el cálculo de ajustes de crédito al cerrar o cancelar un pool | **Payments App** | `POST /api/payments/pools/:pool_id/credit-adjustments` |
+| **Payments App** | Consultar el manifiesto de pasajeros pagados de un pool para calcular ajustes de crédito | **Rider App** | `GET /api/pools/:pool_id/passengers?status=PAID` |
+| **Payments App** | Notificar a Rider App el saldo a favor generado para una reserva | **Rider App** | `PATCH /api/reservations/:reservation_id/credit-adjustment` |
+| **Rider App** | Consultar el saldo a favor disponible de un usuario | **Payments App** | `GET /api/payments/users/:user_id/credit-balance` |
 | **Payments App** | Notificar pago exitoso de una reserva, incluyendo el precio efectivo cobrado | **Rider App** | `PATCH /api/reservations/:reservation_id/payment-result` |
 | **Payments App** | Notificar pago rechazado de una reserva | **Rider App** | `PATCH /api/reservations/:reservation_id/payment-result` |
-| **Payments App** | Notificar que un pago rechazado debe descontarse de la ocupación del pool | **Driver App** | `POST /api/pools/:pool_id/payment-denied` |
 | **Driver App** | Solicitar el manifiesto final de pasajeros pagados para iniciar el recorrido | **Rider App** | `GET /api/pools/:pool_id/passengers?status=PAID` |
 | **Driver App** | Notificar inicio del recorrido para pre-crear reseñas | **Feedback App** | `POST /api/reviews/precreate` |
 | **Rider App** | Consultar hitos y estado granular del recorrido | **Driver App** | `GET /api/pools/:pool_id/status` |
@@ -436,8 +451,6 @@ Responsabilidades principales:
 | **Driver App** | Informar fin del viaje para liquidar fondos al conductor | **Payments App** | `POST /api/payments/pools/:pool_id/settle` |
 | **Feedback App** | Avisar al pasajero que ya puede reseñar el viaje | **Rider App** | `POST /api/notifications/feedback` |
 | **Feedback App** | Avisar al conductor que ya puede reseñar a los pasajeros | **Driver App** | `POST /api/notifications/feedback` |
-
-
 
 # 1.3 — Diseño de APIs Inter-Servicios
 
@@ -887,73 +900,7 @@ Si el pool todavía no tiene conductor asignado:
 
 ---
 
-## 7. POST `/api/pools/:pool_id/payment-denied`
 
-### Descripción
-
-Permite a la **Payments App** notificar que el cobro de una reserva fue rechazado.
-
-La **Driver App** descuenta ese pasajero de la ocupación del pool.
-
-Este ajuste puede realizarse aunque el pool esté `LOCKED`, porque no representa una cancelación voluntaria del usuario sino un ajuste interno por pago rechazado.
-
-### Quién llama a quién
-
-| App origen | App destino |
-|------------|-------------|
-| Payments App | Driver App |
-
-### Path params
-
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `pool_id` | string | Identificador del pool. |
-
-### Request body
-
-```json
-{
-  "reservation_id": "res_456",
-  "passenger_user_id": "user_def456",
-  "reason": "PAYMENT_REJECTED"
-}
-```
-
-### Response `200 OK`
-
-Si el pool sigue teniendo pasajeros:
-
-```json
-{
-  "pool_id": "pool_abc123",
-  "reservation_id": "res_456",
-  "current_passengers": 7,
-  "pool_status": "LOCKED"
-}
-```
-
-Si el pool queda vacío:
-
-```json
-{
-  "pool_id": "pool_abc123",
-  "reservation_id": "res_456",
-  "current_passengers": 0,
-  "pool_status": "CANCELED"
-}
-```
-
-### Errores
-
-| Código | Motivo |
-|--------|--------|
-| `400 Bad Request` | Faltan datos obligatorios. |
-| `401 Unauthorized` | Token inválido o ausente. |
-| `404 Not Found` | El pool no existe. |
-| `409 Conflict` | La reserva ya había sido descontada previamente. |
-| `500 Internal Server Error` | Error interno al descontar la ocupación. |
-
----
 
 ## 8. POST `/api/notifications/feedback`
 
@@ -1011,8 +958,8 @@ Devuelve la lista de pasajeros asociados a un pool.
 Este endpoint es central para el sistema y puede ser utilizado por:
 
 - la **Driver App**, para mostrar los pasajeros que ya se sumaron a un pool en el marketplace;
-- la **Payments App**, para obtener el manifiesto de pasajeros a cobrar;
-- la **Driver App**, para obtener el manifiesto final de pasajeros pagados antes de iniciar el recorrido.
+- la **Payments App**, para obtener el manifiesto de pasajeros pagados y calcular ajustes de crédito;
+- la **Driver App**, para obtener el manifiesto final de pasajeros pagados antes de iniciar el recorrido;
 - la **Feedback App**, para obtener los pasajeros del pool y calcular sus promedios de calificación.
 
 ### Quién llama a quién
@@ -1021,6 +968,7 @@ Este endpoint es central para el sistema y puede ser utilizado por:
 |------------|-------------|
 | Driver App | Rider App |
 | Payments App | Rider App |
+| Feedback App | Rider App |
 
 ### Path params
 
@@ -1032,7 +980,8 @@ Este endpoint es central para el sistema y puede ser utilizado por:
 
 | Campo | Tipo | Obligatorio | Descripción |
 |------|------|-------------|-------------|
-| `status` | string | No | Permite filtrar reservas por estado. Ejemplo: `PAID`. |
+| `reservation_status` | string | No | Permite filtrar reservas por estado operativo. Ejemplo: `CONFIRMED`. |
+| `payment_status` | string | No | Permite filtrar reservas por estado de pago. Ejemplo: `PAID`. |
 
 ### Ejemplos
 
@@ -1041,7 +990,11 @@ GET /api/pools/pool_abc123/passengers
 ```
 
 ```http
-GET /api/pools/pool_abc123/passengers?status=PAID
+GET /api/pools/pool_abc123/passengers?payment_status=PAID
+```
+
+```http
+GET /api/pools/pool_abc123/passengers?reservation_status=CONFIRMED&payment_status=PAID
 ```
 
 ### Response `200 OK`
@@ -1054,7 +1007,8 @@ GET /api/pools/pool_abc123/passengers?status=PAID
       "reservation_id": "res_101",
       "passenger_user_id": "user_abc123",
       "passenger_name": "Franco Gulino",
-      "reservation_status": "PAID",
+      "reservation_status": "CONFIRMED",
+      "payment_status": "PAID",
       "pickup_point": {
         "address": "Av. Alem 1250, Bahía Blanca",
         "lat": -38.718,
@@ -1063,13 +1017,18 @@ GET /api/pools/pool_abc123/passengers?status=PAID
       "destination_id": "dest_polo_petroquimico",
       "departure_time": "2026-06-10T08:00:00Z",
       "max_price": 5000,
-      "effective_price": 3800
+      "amount_charged": 3800,
+      "credit_applied": 1200,
+      "final_trip_price": null,
+      "credit_granted": 0,
+      "currency": "ARS"
     },
     {
       "reservation_id": "res_102",
       "passenger_user_id": "user_def456",
       "passenger_name": "Juan Ignacio Ibarra",
-      "reservation_status": "PAID",
+      "reservation_status": "PENDING_DRIVER",
+      "payment_status": "PAID",
       "pickup_point": {
         "address": "Sarmiento 850, Bahía Blanca",
         "lat": -38.713,
@@ -1078,20 +1037,45 @@ GET /api/pools/pool_abc123/passengers?status=PAID
       "destination_id": "dest_polo_petroquimico",
       "departure_time": "2026-06-10T08:00:00Z",
       "max_price": 5000,
-      "effective_price": 3800
+      "amount_charged": 5000,
+      "credit_applied": 0,
+      "final_trip_price": null,
+      "credit_granted": 0,
+      "currency": "ARS"
     }
   ]
 }
 ```
 
-### Reglas del contrato
+### Response `200 OK` después del cálculo de crédito
 
-- `passengers` siempre debe ser un array.
-- Si no hay pasajeros para el filtro solicitado, debe responder `passengers: []`.
-- `effective_price` puede ser `null` antes de que Payments App procese el cobro.
-- Cuando se consulta con `status=PAID`, la respuesta debe incluir únicamente reservas en estado `PAID`.
-- Payments App utiliza este endpoint como manifiesto de cobro.
-- Driver App utiliza este endpoint con `status=PAID` como manifiesto final operativo.
+```json
+{
+  "pool_id": "pool_abc123",
+  "passengers": [
+    {
+      "reservation_id": "res_101",
+      "passenger_user_id": "user_abc123",
+      "passenger_name": "Franco Gulino",
+      "reservation_status": "CONFIRMED",
+      "payment_status": "PAID",
+      "pickup_point": {
+        "address": "Av. Alem 1250, Bahía Blanca",
+        "lat": -38.718,
+        "lng": -62.266
+      },
+      "destination_id": "dest_polo_petroquimico",
+      "departure_time": "2026-06-10T08:00:00Z",
+      "max_price": 5000,
+      "amount_charged": 3800,
+      "credit_applied": 1200,
+      "final_trip_price": 3800,
+      "credit_granted": 1200,
+      "currency": "ARS"
+    }
+  ]
+}
+```
 
 ### Response `200 OK` sin resultados
 
@@ -1102,11 +1086,26 @@ GET /api/pools/pool_abc123/passengers?status=PAID
 }
 ```
 
+### Reglas del contrato
+
+- `passengers` siempre debe ser un array.
+- Si no hay pasajeros para el filtro solicitado, debe responder `passengers: []`.
+- `reservation_status` representa el estado operativo de la reserva.
+- `payment_status` representa el estado del pago asociado a la reserva.
+- El filtro `payment_status=PAID` debe devolver únicamente reservas pagadas.
+- Las reservas con `payment_status = DENIED`, `CANCELED` o `EXPIRED` no forman parte efectiva del pool.
+- La **Rider App** solo debe notificar a la **Driver App** que una reserva se suma al pool cuando el pago fue exitoso.
+- La **Payments App** utiliza este endpoint con `payment_status=PAID` para calcular ajustes de crédito.
+- La **Driver App** utiliza este endpoint con `payment_status=PAID` como manifiesto final operativo.
+- La **Feedback App** utiliza este endpoint para obtener los pasajeros del pool y calcular sus promedios de calificación.
+- `final_trip_price` puede ser `null` antes del cálculo de ajustes de crédito.
+- `credit_granted` puede ser `0` si todavía no se generó saldo a favor o si no correspondía generarlo.
+
 ### Errores
 
 | Código | Motivo |
 |--------|--------|
-| `400 Bad Request` | El estado enviado como filtro no es válido. |
+| `400 Bad Request` | Alguno de los filtros enviados tiene un valor inválido. |
 | `401 Unauthorized` | Token inválido o ausente. |
 | `404 Not Found` | El pool no tiene reservas asociadas o no existe para Rider App. |
 | `500 Internal Server Error` | Error interno al obtener pasajeros del pool. |
@@ -1169,17 +1168,27 @@ La **Rider App** debe actualizar las reservas asociadas al pool a estado `CANCEL
 
 ### Descripción
 
-Permite a la **Payments App** notificar a la **Rider App** el resultado del cobro de una reserva.
+- `payment_status = PAID`;
+- la reserva deja `PENDING_PAYMENT` y pasa a `PENDING_DRIVER` o `CONFIRMED`, segun si el pool ya tiene conductor asignado o no;
+- se guardan `max_price`, `credit_applied` y `amount_charged`.
 
-Si el pago fue exitoso:
+Si Mercado Pago rechaza el pago:
 
-- la reserva pasa a `PAID`;
-- se guarda el `effective_price`.
+- `payment_status = DENIED`;
+- `reservation_status` permanece en `PENDING_PAYMENT`;
+- la reserva puede reintentar el pago.
 
-Si el pago fue rechazado:
+Si el usuario cancela el checkout:
 
-- la reserva pasa a `DENIED`;
-- `effective_price` queda en `null`.
+- `payment_status = CANCELED`;
+- `reservation_status = CANCELED`.
+
+Si el checkout expira:
+
+- `payment_status = EXPIRED`;
+- `reservation_status = CANCELED`.
+
+En ninguno de los casos no exitosos la reserva forma parte efectiva del pool.
 
 ### Quién llama a quién
 
@@ -1199,14 +1208,10 @@ Si el pago fue rechazado:
 {
   "payment_status": "PAID",
   "transaction_id": "txn_123456",
-  "effective_price": 3800,
+  "max_price": 5000,
+  "credit_applied": 1200,
+  "amount_charged": 3800,
   "currency": "ARS",
-  "discounts_applied": [
-    {
-      "type": "OCCUPANCY_DISCOUNT",
-      "amount": 1200
-    }
-  ],
   "processed_at": "2026-06-10T07:00:00Z"
 }
 ```
@@ -1223,13 +1228,38 @@ Si el pago fue rechazado:
 }
 ```
 
+### Request body para checkout cancelado por el usuario
+
+```json
+{
+  "payment_status": "CANCELED",
+  "transaction_id": "txn_345678",
+  "currency": "ARS",
+  "processed_at": "2026-06-10T07:00:00Z"
+}
+```
+
+### Request body para checkout expirado
+
+```json
+{
+  "payment_status": "EXPIRED",
+  "transaction_id": "txn_901234",
+  "currency": "ARS",
+  "processed_at": "2026-06-10T07:00:00Z"
+}
+```
+
 ### Response `200 OK` para pago exitoso
 
 ```json
 {
   "reservation_id": "res_101",
-  "reservation_status": "PAID",
-  "effective_price": 3800
+  "payment_status": "PAID",
+  "reservation_status": "PENDING_DRIVER",
+  "max_price": 5000,
+  "credit_applied": 1200,
+  "amount_charged": 3800
 }
 ```
 
@@ -1238,8 +1268,27 @@ Si el pago fue rechazado:
 ```json
 {
   "reservation_id": "res_101",
-  "reservation_status": "DENIED",
-  "effective_price": null
+  "payment_status": "DENIED",
+  "reservation_status": "PENDING_PAYMENT"
+}
+```
+### Response `200 OK` para checkout cancelado por el usuario
+
+```json
+{
+  "reservation_id": "res_101",
+  "payment_status": "CANCELED",
+  "reservation_status": "CANCELED"
+}
+```
+
+### Response `200 OK` para checkout expirado
+
+```json
+{
+  "reservation_id": "res_101",
+  "payment_status": "EXPIRED",
+  "reservation_status": "CANCELED"
 }
 ```
 
@@ -1298,7 +1347,7 @@ Permite a la **Feedback App** avisar a la **Rider App** que el pasajero ya puede
 
 # Payments App — Endpoints expuestos
 
-La **Payments App** expone endpoints relacionados con estimación de precios, cobros automáticos y liquidaciones.
+La **Payments App** expone endpoints relacionados con estimacion de precios, checkout de reservas, ajustes de credito y liquidaciones.
 
 ---
 
@@ -1363,19 +1412,106 @@ GET /api/payments/pricing-estimate?origin_lat=-38.718&origin_lng=-62.266&destina
 
 ---
 
-## 2. POST `/api/payments/pools/:pool_id/auto-charge`
+## 2. POST `/api/payments/reservations/:reservation_id/checkout`
 
 ### Descripción
 
-Permite a la **Driver App** solicitar el inicio de los cobros automáticos cuando el pool se cierra en T-1h.
+Permite a la **Rider App** solicitar a la **Payments App** la creación de una instancia de pago para una reserva.
 
-Al recibir esta solicitud, la **Payments App** debe consultar a la **Rider App** el manifiesto de pasajeros del pool mediante:
+Este endpoint se utiliza cuando el pasajero confirma que quiere reservar un viaje. La **Rider App** crea previamente una reserva en estado `PENDING_PAYMENT` y con `payment_status = UNPAID`. Luego llama a este endpoint para que la **Payments App** prepare el checkout correspondiente.
 
-```http
-GET /api/pools/:pool_id/passengers
+La **Payments App** calcula el saldo a favor disponible del pasajero, aplica ese saldo sobre el precio máximo de la reserva y determina cuánto debe cobrarse mediante Mercado Pago.
+
+Luego, la **Payments App** devuelve una URL de pago para que la **Rider App** redirija al pasajero.
+
+### Quién llama a quién
+
+| App origen | App destino |
+|------------|-------------|
+| Rider App | Payments App |
+
+### Path params
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `reservation_id` | string | Identificador de la reserva creada en Rider App. |
+
+### Request body
+
+```json
+{
+  "pool_id": "pool_abc123",
+  "passenger_user_id": "user_abc123",
+  "max_price": 5000,
+  "currency": "ARS",
+  "success_url": "https://rider-app.com/reservations/res_123/success",
+  "failure_url": "https://rider-app.com/reservations/res_123/failure"
+}
 ```
 
-Luego procesa los cobros de cada reserva.
+### Campos
+
+| Campo | Tipo | Obligatorio | Descripción |
+|------|------|-------------|-------------|
+| `pool_id` | string | Sí | Identificador del pool asociado a la reserva. |
+| `passenger_user_id` | string | Sí | Identificador del pasajero en Clerk. |
+| `max_price` | number | Sí | Precio máximo que debe pagar el pasajero por la reserva. |
+| `currency` | string | Sí | Moneda del pago. Ejemplo: `ARS`. |
+| `success_url` | string | Sí | URL a la que se redirige al usuario si el pago fue exitoso. |
+| `failure_url` | string | Sí | URL a la que se redirige al usuario si el pago fue rechazado o cancelado. |
+
+### Response `201 Created`
+
+```json
+{
+  "checkout_id": "checkout_123",
+  "reservation_id": "res_123",
+  "pool_id": "pool_abc123",
+  "passenger_user_id": "user_abc123",
+  "payment_url": "https://payments-app.com/checkout/checkout_123",
+  "max_price": 5000,
+  "available_credit": 1200,
+  "credit_applied": 1200,
+  "amount_to_charge": 3800,
+  "currency": "ARS",
+  "checkout_status": "CREATED"
+}
+```
+
+### Reglas del contrato
+
+- La **Rider App** no debe enviar al usuario directamente a Payments App con datos sensibles en la URL.
+- La **Rider App** debe llamar primero a este endpoint para crear una instancia de checkout.
+- La **Payments App** calcula el saldo disponible del usuario.
+- Si el usuario tiene saldo a favor, este se aplica primero.
+- Si el saldo a favor cubre todo el precio máximo, `amount_to_charge` puede ser `0`.
+- Si `amount_to_charge = 0`, la **Payments App** puede marcar el pago como exitoso sin redirigir a Mercado Pago.
+- Si `amount_to_charge > 0`, la **Payments App** genera una instancia de pago y devuelve `payment_url`.
+- La reserva recien se considera pagada cuando la **Payments App** notifica a la **Rider App** mediante `PATCH /api/reservations/:reservation_id/payment-result` con `payment_status = PAID`.
+- Si el pago es rechazado, Rider App mantiene `reservation_status = PENDING_PAYMENT` y puede permitir reintento.
+- Si el usuario cancela el checkout o este expira, Rider App debe dejar `reservation_status = CANCELED`.
+
+### Errores
+
+| Código | Motivo |
+|--------|--------|
+| `400 Bad Request` | Faltan datos obligatorios o tienen formato inválido. |
+| `401 Unauthorized` | Token inválido o ausente. |
+| `404 Not Found` | No se encontró información suficiente para crear el checkout. |
+| `409 Conflict` | Ya existe un checkout activo o pagado para esa reserva. |
+| `500 Internal Server Error` | Error interno al crear el checkout. |
+
+---
+
+## 3. POST `/api/payments/pools/:pool_id/credit-adjustments`
+
+### Descripción
+
+Permite a la **Driver App** solicitar a la **Payments App** el cálculo de ajustes de crédito asociados a un pool.
+
+Este endpoint reemplaza al cobro automático en T-1h. En este nuevo flujo, los pasajeros ya pagaron el precio máximo al momento de reservar. Por lo tanto, al cierre del pool ya no se cobran pagos automáticos.
+
+En T-1h, o ante una cancelación del pool por falta de conductor, la **Payments App** calcula si corresponde generar saldo a favor para los pasajeros.
 
 ### Quién llama a quién
 
@@ -1383,58 +1519,209 @@ Luego procesa los cobros de cada reserva.
 |------------|-------------|
 | Driver App | Payments App |
 
+### Comunicación interna requerida
+
+La **Payments App** consulta a la **Rider App** el manifiesto de pasajeros pagados del pool mediante:
+
+```http
+GET /api/pools/:pool_id/passengers?payment_status=PAID
+```
+
 ### Path params
 
 | Campo | Tipo | Descripción |
 |------|------|-------------|
-| `pool_id` | string | Identificador del pool. |
+| `pool_id` | string | Identificador del pool sobre el cual se calculan los ajustes. |
 
-### Request body
+### Request body para cierre normal del pool
 
 ```json
 {
+  "reason": "POOL_LOCKED",
   "departure_time": "2026-06-10T08:00:00Z",
   "current_passengers": 8
 }
 ```
 
-### Response `202 Accepted`
+### Request body para cancelación por falta de conductor
+
+```json
+{
+  "reason": "NO_DRIVER_ASSIGNED",
+  "departure_time": "2026-06-10T08:00:00Z",
+  "current_passengers": 0
+}
+```
+
+### Campos
+
+| Campo | Tipo | Obligatorio | Descripción |
+|------|------|-------------|-------------|
+| `reason` | string | Sí | Motivo del ajuste. Valores posibles: `POOL_LOCKED`, `NO_DRIVER_ASSIGNED`. |
+| `departure_time` | string | Sí | Fecha y hora de salida del pool. |
+| `current_passengers` | number | Sí | Ocupación del pool al momento del ajuste. |
+
+### Response `200 OK` para cierre normal del pool
 
 ```json
 {
   "pool_id": "pool_abc123",
-  "auto_charge_status": "STARTED",
-  "message": "El proceso de cobro automático fue iniciado."
+  "reason": "POOL_LOCKED",
+  "final_price": 3800,
+  "processed_reservations": 8,
+  "currency": "ARS",
+  "credits_generated": [
+    {
+      "reservation_id": "res_101",
+      "passenger_user_id": "user_abc123",
+      "max_price_paid": 5000,
+      "final_price": 3800,
+      "credit_granted": 1200,
+      "credit_balance_after": 1800
+    },
+    {
+      "reservation_id": "res_102",
+      "passenger_user_id": "user_def456",
+      "max_price_paid": 5000,
+      "final_price": 3800,
+      "credit_granted": 1200,
+      "credit_balance_after": 1200
+    }
+  ]
+}
+```
+
+### Response `200 OK` para cancelación por falta de conductor
+
+```json
+{
+  "pool_id": "pool_abc123",
+  "reason": "NO_DRIVER_ASSIGNED",
+  "final_price": 0,
+  "processed_reservations": 2,
+  "currency": "ARS",
+  "credits_generated": [
+    {
+      "reservation_id": "res_101",
+      "passenger_user_id": "user_abc123",
+      "max_price_paid": 5000,
+      "final_price": 0,
+      "credit_granted": 5000,
+      "credit_balance_after": 6200
+    },
+    {
+      "reservation_id": "res_102",
+      "passenger_user_id": "user_def456",
+      "max_price_paid": 5000,
+      "final_price": 0,
+      "credit_granted": 5000,
+      "credit_balance_after": 5000
+    }
+  ]
+}
+```
+
+### Response `200 OK` si no se genera crédito
+
+```json
+{
+  "pool_id": "pool_abc123",
+  "reason": "POOL_LOCKED",
+  "final_price": 5000,
+  "processed_reservations": 4,
+  "currency": "ARS",
+  "credits_generated": []
 }
 ```
 
 ### Reglas del contrato
 
-Por cada reserva procesada, la **Payments App** debe notificar el resultado a la **Rider App** mediante:
-
-```http
-PATCH /api/reservations/:reservation_id/payment-result
-```
-
-Si un pago es rechazado, además debe notificar a la **Driver App** mediante:
-
-```http
-POST /api/pools/:pool_id/payment-denied
-```
+- Este endpoint no realiza cobros.
+- Este endpoint reemplaza al antiguo endpoint de cobro automático.
+- Si `reason = POOL_LOCKED`, la **Payments App** calcula el precio final del viaje según la ocupación del pool.
+- Si `reason = NO_DRIVER_ASSIGNED`, la **Payments App** acredita como saldo a favor el total pagado por cada reserva.
+- La **Payments App** solo debe procesar reservas con `payment_status = PAID`.
+- Para obtener esas reservas, la **Payments App** consulta a la **Rider App** mediante `GET /api/pools/:pool_id/passengers?payment_status=PAID`.
+- Si el precio final es menor al precio máximo pagado, la diferencia se acredita como saldo a favor.
+- El saldo a favor generado se guarda en **Payments App**.
+- Por cada crédito generado, la **Payments App** debe notificar a la **Rider App** mediante `PATCH /api/reservations/:reservation_id/credit-adjustment`.
+- La **Rider App** utiliza esa notificación para actualizar la reserva y mostrar una notificación o toast al pasajero.
 
 ### Errores
 
 | Código | Motivo |
 |--------|--------|
-| `400 Bad Request` | Faltan datos obligatorios. |
+| `400 Bad Request` | Faltan datos obligatorios o `reason` tiene un valor inválido. |
 | `401 Unauthorized` | Token inválido o ausente. |
-| `404 Not Found` | No existe información suficiente para procesar el pool. |
-| `409 Conflict` | El pool no está en un estado válido para iniciar cobros. |
-| `500 Internal Server Error` | Error interno al iniciar el proceso de cobro. |
+| `404 Not Found` | No existen reservas pagadas asociadas al pool. |
+| `409 Conflict` | Los ajustes de crédito para ese pool ya fueron procesados. |
+| `502 Bad Gateway` | La Payments App no pudo obtener el manifiesto desde Rider App. |
+| `500 Internal Server Error` | Error interno al calcular los ajustes de crédito. |
 
 ---
 
-## 3. POST `/api/payments/pools/:pool_id/settle`
+## 4. GET `/api/payments/users/:user_id/credit-balance`
+
+### Descripción
+
+Permite consultar el saldo a favor disponible de un usuario.
+
+Este endpoint puede ser utilizado por la **Rider App** para mostrarle al pasajero cuánto saldo tiene disponible antes de iniciar un nuevo pago.
+
+También puede ser utilizado por la propia **Payments App** para mostrar el saldo dentro de sus pantallas de usuario.
+
+### Quién llama a quién
+
+| App origen | App destino |
+|------------|-------------|
+| Rider App | Payments App |
+| Payments App Frontend | Payments App Backend |
+
+### Path params
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `user_id` | string | Identificador del usuario en Clerk. |
+
+### Response `200 OK`
+
+```json
+{
+  "user_id": "user_abc123",
+  "available_credit": 1800,
+  "currency": "ARS"
+}
+```
+
+### Response `200 OK` si el usuario no tiene saldo a favor
+
+```json
+{
+  "user_id": "user_abc123",
+  "available_credit": 0,
+  "currency": "ARS"
+}
+```
+
+### Reglas del contrato
+
+- La **Payments App** es la fuente de verdad del saldo a favor.
+- La **Rider App** no calcula ni modifica el saldo a favor.
+- Si el usuario no tiene cuenta de crédito creada, la **Payments App** puede responder `available_credit = 0`.
+- El saldo a favor se aplica automáticamente al crear un checkout mediante `POST /api/payments/reservations/:reservation_id/checkout`.
+
+### Errores
+
+| Código | Motivo |
+|--------|--------|
+| `400 Bad Request` | El `user_id` tiene formato inválido. |
+| `401 Unauthorized` | Token inválido o ausente. |
+| `403 Forbidden` | El usuario no tiene permisos para consultar ese saldo. |
+| `500 Internal Server Error` | Error interno al consultar el saldo a favor. |
+
+---
+
+## 5. POST `/api/payments/pools/:pool_id/settle`
 
 ### Descripción
 
@@ -1750,7 +2037,6 @@ Si no hay pasajeros en estado `PAID`, no se crean reseñas.
 | `502 Bad Gateway` | La Feedback App no pudo obtener los pasajeros pagados desde la Rider App. |
 | `500 Internal Server Error` | Error interno al pre-crear reseñas. |
 
-
 # 1.4 — Modelo de Datos por Aplicación
 
 > **Tipo A — Plataforma de Transporte (WeShuttle)**
@@ -1973,6 +2259,13 @@ Representa la reserva individual de un pasajero.
 
 La reserva es la unidad principal de la Rider App. Cada reserva pertenece a un pasajero y puede estar asociada a un pool creado en la Driver App.
 
+En el nuevo flujo, el estado operativo de la reserva y el estado del pago se modelan por separado:
+
+- `reservation_status`: indica el estado operativo de la reserva dentro del flujo del viaje.
+- `payment_status`: indica el estado del pago asociado a la reserva.
+
+Esto evita mezclar conceptos distintos. Una reserva puede estar pagada, pero todavía no tener conductor asignado.
+
 | Campo | Tipo | Descripción |
 |------|------|-------------|
 | `id` | string | Identificador de la reserva. Se comparte con otras apps como `reservation_id`. |
@@ -1984,22 +2277,36 @@ La reserva es la unidad principal de la Rider App. Cada reserva pertenece a un p
 | `pickup_address` | string | Dirección del punto de recogida. |
 | `pickup_lat` | number | Latitud del punto de recogida. |
 | `pickup_lng` | number | Longitud del punto de recogida. |
-| `status` | string | Estado actual de la reserva. |
-| `max_price` | number | Precio máximo informado al momento de reservar. |
-| `effective_price` | number, nullable | Precio efectivamente pagado luego del cobro automático. |
+| `reservation_status` | string | Estado operativo de la reserva. |
+| `payment_status` | string | Estado del pago asociado a la reserva. |
+| `max_price` | number | Precio máximo que el pasajero debe pagar por la reserva. |
+| `amount_charged` | number, nullable | Monto efectivamente cobrado mediante Mercado Pago luego de aplicar saldo a favor. |
+| `credit_applied` | number | Saldo a favor utilizado para pagar esta reserva. |
+| `final_trip_price` | number, nullable | Precio final calculado al cierre T-1h según la ocupación real del pool. |
+| `credit_granted` | number | Saldo a favor generado para próximos viajes. |
 | `currency` | string | Moneda de los importes. Ejemplo: `ARS`. |
 | `payment_transaction_id` | string, nullable | Identificador de la transacción informada por Payments App. |
 | `payment_rejection_reason` | string, nullable | Motivo de rechazo del pago, si corresponde. |
 | `assigned_driver_snapshot` | json, nullable | Datos del conductor y vehículo asignados, guardados como snapshot cuando el pool pasa a estar asignado. |
 
-Estados posibles de `status`:
+Estados posibles de `reservation_status`:
 
 ```text
+PENDING_PAYMENT
 PENDING_DRIVER
 CONFIRMED
+CANCELED
+```
+
+Estados posibles de `payment_status`:
+
+```text
+UNPAID
+PENDING
 PAID
 DENIED
 CANCELED
+EXPIRED
 ```
 
 Estructura sugerida para `assigned_driver_snapshot`:
@@ -2023,6 +2330,7 @@ Relaciones:
 - Una reserva referencia un destino.
 - Una reserva referencia un pool externo de Driver App.
 - Una reserva puede recibir un resultado de pago informado por Payments App.
+- Una reserva puede recibir un ajuste de crédito informado por Payments App.
 - Una reserva puede generar reseñas en Feedback App si fue pagada y el viaje finalizó.
 
 Notas:
@@ -2031,7 +2339,14 @@ Notas:
 - No se guarda snapshot del nombre del destino. Si el destino cambia de nombre en el futuro, el historial mostrará el dato actual del catálogo de destinos.
 - La Rider App guarda un snapshot del conductor y vehículo asignados dentro de la reserva, en el campo `assigned_driver_snapshot`, cuando el pool pasa a estado `ASSIGNED`.
 - Driver App sigue siendo la fuente de verdad de conductores y vehículos. El snapshot en Rider App se utiliza únicamente para mostrar el resumen e historial del viaje.
-- `effective_price` se completa cuando Payments App notifica un pago exitoso mediante `PATCH /api/reservations/:reservation_id/payment-result`.
+- `max_price` representa el precio máximo que el usuario acepta pagar al reservar.
+- `amount_charged` representa cuánto dinero se cobró efectivamente mediante Mercado Pago, luego de aplicar saldo a favor.
+- `credit_applied` representa cuánto saldo a favor se utilizó para pagar esta reserva.
+- `final_trip_price` se completa cuando Payments App calcula el precio final del viaje al cierre T-1h.
+- `credit_granted` se completa cuando Payments App informa que se generó saldo a favor para próximos viajes.
+- La Rider App no calcula saldo a favor. Solo guarda el resultado informado por Payments App para mostrarlo en el resumen, historial y notificaciones al usuario.
+```
+
 ---
 
 ### Historial de viajes
@@ -2047,121 +2362,61 @@ Cada reserva contiene los datos principales necesarios para el historial:
 - destino;
 - horario;
 - punto de recogida;
-- estado final;
-- precio máximo informado;
-- precio efectivo pagado;
-- transacción de pago asociada, si corresponde.
+- estado operativo de la reserva;
+- estado del pago;
+- precio máximo pagado;
+- saldo a favor aplicado;
+- monto efectivamente cobrado;
+- precio final del viaje, si ya fue calculado;
+- saldo a favor generado para próximos viajes;
+- transacción de pago asociada, si corresponde;
+- conductor y vehículo asignados, si fueron guardados como snapshot.
 
 Si en etapas futuras se requiere optimizar la lectura del historial, puede agregarse una vista o una tabla derivada, pero no es necesaria para el modelo inicial.
-
----
-
-### Notificaciones al pasajero
-
-
-### `passenger_notifications`
-
-Representa las notificaciones persistidas para los pasajeros.
-
-Cada notificación se guarda como un registro nuevo. No se reutiliza ni se edita un mismo registro para distintos eventos.
-
-El objetivo de esta entidad es permitir que la Rider App mantenga un historial de notificaciones relevantes para el usuario, incluso si el usuario no las visualiza en el momento exacto en que ocurren.
-
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `id` | string | Identificador de la notificación. |
-| `passenger_user_id` | string | Identificador del pasajero en Clerk. |
-| `reservation_id` | string, nullable | Reserva asociada, si corresponde. |
-| `pool_id` | string, nullable | Pool asociado, si corresponde. |
-| `type` | string | Tipo de notificación. |
-| `message` | string | Mensaje a mostrar al pasajero. |
-| `read_at` | datetime, nullable | Fecha en la que el usuario leyó la notificación. |
-| `created_at` | datetime | Fecha en la que se creó la notificación. |
-
-Ejemplos de `type`:
-
-```text
-POOL_CANCELED
-PAYMENT_DENIED
-PAYMENT_CONFIRMED
-TRIP_STARTED
-DRIVER_ON_WAY
-DRIVER_ARRIVED
-FEEDBACK_AVAILABLE
 ```
-
-Relaciones:
-
-- Una notificación pertenece a un pasajero.
-- Una notificación puede estar asociada a una reserva.
-- Una notificación puede estar asociada a un pool.
-
-Notas:
-
-- Se crea un registro nuevo por cada evento notificable.
-- Esta entidad permite mostrar un historial de notificaciones del usuario.
-- `read_at = null` indica que la notificación todavía no fue leída.
-- Las notificaciones no reemplazan el estado real de la reserva ni del pool. Solo representan mensajes mostrados o pendientes de mostrar al usuario.
 
 
 ---
 
 ## Payments App
 
-La **Payments App** es la fuente de verdad de precios, métodos de pago, cobros, descuentos, transacciones y liquidaciones.
+La **Payments App** es la fuente de verdad de precios, checkout de reservas, cobros, transacciones, saldo a favor, ajustes de crédito y liquidaciones.
+
+En el nuevo flujo, la Payments App ya no realiza cobros automáticos al cierre T-1h. El pasajero paga el precio máximo al momento de reservar.
+
+Luego, al cierre del pool en T-1h, la Payments App calcula el precio final del viaje según la ocupación real del pool y genera saldo a favor para el pasajero cuando corresponda.
+
+También genera saldo a favor cuando un pool se cancela por falta de conductor, acreditando al pasajero el monto pagado.
+
+En esta etapa, el descuento por ocupación no se modela como una entidad independiente. El descuento se calcula a nivel de pool durante el proceso `pool_price_finalization_jobs`, utilizando las reglas definidas en `pricing_rules`. El resultado de ese cálculo se refleja en cada `charge` mediante `final_trip_price` y `credit_granted`, y el saldo a favor se registra en `credit_movements`.
 
 ---
 
 ### Entidades principales
 
-### `payment_methods`
+### `payment_methods` *(opcional futura)*
 
-Representa los métodos de pago vinculados por los pasajeros.
+En esta etapa no se requiere almacenar métodos de pago de pasajeros como entidad principal, porque el pasajero paga directamente cada reserva mediante Mercado Pago al momento de reservar.
 
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `id` | string | Identificador interno del método de pago. |
-| `clerk_user_id` | string | Usuario dueño del método de pago. |
-| `provider` | string | Proveedor del método de pago. Ejemplo: `MERCADO_PAGO`. |
-| `provider_token` | string | Token o referencia segura del proveedor. |
-| `status` | string | Estado de vinculación. Ejemplo: `ACTIVE`, `INACTIVE`, `REVOKED`. |
+La Payments App puede operar mediante sesiones de checkout y transacciones de pago sin conservar un método de pago reutilizable para cobros automáticos.
 
-Relaciones:
+Esta entidad podría incorporarse en futuras etapas si se decide volver a implementar cobros automáticos o pagos con medios guardados.
 
-- Un usuario puede tener uno o más métodos de pago.
-- Un cobro utiliza un método de pago asociado al pasajero.
-
----
-
-### `payout_accounts`
-
-Representa las cuentas de cobro configuradas por los conductores.
-
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `id` | string | Identificador interno de la cuenta de cobro. |
-| `driver_user_id` | string | Identificador del conductor en Clerk. |
-| `provider` | string | Proveedor o tipo de cuenta. |
-| `account_reference` | string | Referencia segura de la cuenta de cobro. |
-| `alias` | string, nullable | Alias de la cuenta, si corresponde. |
-| `status` | string | Estado de la cuenta. Ejemplo: `ACTIVE`, `INACTIVE`, `REJECTED`. |
-
-Relaciones:
-
-- Un conductor puede tener una o más cuentas de cobro.
-- Una liquidación se realiza hacia una cuenta de cobro del conductor.
+Por este motivo, `payment_methods` no forma parte del modelo principal de datos de esta etapa.
 
 ---
 
 ### `pricing_rules`
 
-Representa las reglas utilizadas para calcular precio máximo, precio estimado y descuentos.
+Representa las reglas utilizadas para calcular el precio máximo, el precio estimado y el precio final del viaje.
+
+En esta etapa, las reglas de precio también permiten calcular el descuento por ocupación del pool. Ese descuento no se descuenta directamente del pago inicial, sino que se usa al cierre T-1h para determinar el precio final y generar saldo a favor.
 
 | Campo | Tipo | Descripción |
 |------|------|-------------|
 | `id` | string | Identificador de la regla. |
 | `destination_id` | string, nullable | Destino al que aplica la regla. Puede ser `null` si es general. |
-| `base_price` | number | Precio base del viaje. |
+| `base_price` | number | Precio base o precio máximo de referencia del viaje. |
 | `min_passengers` | number | Cantidad mínima de pasajeros para aplicar la regla. |
 | `max_passengers` | number | Cantidad máxima de pasajeros para aplicar la regla. |
 | `discount_type` | string | Tipo de descuento. Ejemplo: `PERCENTAGE`, `FIXED_AMOUNT`. |
@@ -2170,21 +2425,48 @@ Representa las reglas utilizadas para calcular precio máximo, precio estimado y
 
 Relaciones:
 
-- Una regla puede aplicar a uno o varios cálculos de precio.
-- Los cobros pueden guardar el descuento aplicado como snapshot.
+- Una regla puede ser utilizada para calcular el precio máximo, estimado o final de un viaje.
+- Una regla puede ser referenciada por un proceso `pool_price_finalization_jobs` cuando se calcula el precio final del pool.
+
+Notas:
+
+- `pricing_rules` define cómo se calculan precios y descuentos.
+- La Payments App utiliza estas reglas para calcular el precio máximo y el precio estimado antes de la reserva.
+- Al cierre T-1h, la Payments App utiliza la ocupación real del pool para seleccionar la regla correspondiente y calcular el precio final.
+- El descuento por ocupación se registra en `pool_price_finalization_jobs`, no en una entidad separada.
+- El saldo a favor generado por ese descuento se registra en `credit_movements`.
 
 ---
 
-### `auto_charge_jobs`
+### `pool_price_finalization_jobs`
 
-Representa el proceso de cobro automático iniciado al cerrar un pool en T-1h.
+Representa el proceso de cálculo de precio final y generación de saldo a favor para un pool.
+
+Este proceso se ejecuta cuando la Driver App solicita a Payments App el cálculo de ajustes de crédito mediante:
+
+```http
+POST /api/payments/pools/:pool_id/credit-adjustments
+```
+
+Este proceso puede iniciarse por dos motivos:
+
+- `POOL_LOCKED`: el pool llegó a T-1h y se calcula el precio final según la ocupación real.
+- `NO_DRIVER_ASSIGNED`: el pool fue cancelado por falta de conductor y se acredita a cada pasajero el monto pagado.
+
+En esta etapa, el descuento por ocupación se registra directamente en esta entidad, porque el cálculo ocurre a nivel del pool completo y no como una lista de descuentos independientes por cobro.
 
 | Campo | Tipo | Descripción |
 |------|------|-------------|
-| `id` | string | Identificador del proceso de cobro automático. |
+| `id` | string | Identificador del proceso. |
 | `pool_id` | string | Identificador externo del pool. |
-| `requested_by` | string | App que solicitó el cobro. Ejemplo: `DRIVER_APP`. |
-| `current_passengers` | number | Cantidad de pasajeros informada al iniciar el proceso. |
+| `reason` | string | Motivo del ajuste. Ejemplo: `POOL_LOCKED`, `NO_DRIVER_ASSIGNED`. |
+| `current_passengers` | number | Ocupación utilizada para calcular el precio final. |
+| `pricing_rule_id` | string, nullable | Regla de precio utilizada para calcular el precio final. |
+| `base_price` | number | Precio base o precio máximo de referencia antes del descuento. |
+| `final_price` | number, nullable | Precio final calculado para el pool. |
+| `discount_type` | string, nullable | Tipo de descuento aplicado. Ejemplo: `OCCUPANCY_DISCOUNT`. |
+| `discount_value` | number, nullable | Valor del descuento aplicado por pasajero. |
+| `currency` | string | Moneda del cálculo. Ejemplo: `ARS`. |
 | `status` | string | Estado del proceso. |
 | `started_at` | datetime | Fecha de inicio del proceso. |
 | `finished_at` | datetime, nullable | Fecha de finalización del proceso. |
@@ -2194,14 +2476,84 @@ Estados sugeridos de `status`:
 ```text
 STARTED
 COMPLETED
-PARTIAL_FAILED
 FAILED
+```
+
+Tipos sugeridos de `discount_type`:
+
+```text
+OCCUPANCY_DISCOUNT
+NO_DRIVER_CREDIT
 ```
 
 Relaciones:
 
-- Un proceso de cobro automático pertenece a un pool.
-- Un proceso puede generar múltiples cobros en `charges`.
+- Un proceso de finalización pertenece a un pool externo de Driver App.
+- Un proceso puede referenciar una regla de precio en `pricing_rules`.
+- Un proceso puede actualizar múltiples cobros en `charges`.
+- Un proceso puede generar múltiples movimientos de crédito en `credit_movements`.
+
+Notas:
+
+- Este proceso no realiza cobros.
+- Este proceso reemplaza al antiguo proceso de cobro automático.
+- La Payments App consulta a Rider App el manifiesto de reservas pagadas usando `GET /api/pools/:pool_id/passengers?payment_status=PAID`.
+- La Payments App utiliza `pricing_rules` para calcular el precio final del viaje según la ocupación real del pool.
+- Si `reason = POOL_LOCKED`, `discount_value` representa la diferencia entre `base_price` y `final_price`.
+- Si `reason = NO_DRIVER_ASSIGNED`, `final_price = 0` y el crédito generado para cada pasajero equivale al monto pagado.
+- Si el cálculo genera saldo a favor, se registra un movimiento en `credit_movements` con tipo `CREDIT_GRANTED`.
+
+---
+
+### `checkout_sessions`
+
+Representa una sesión de pago creada para una reserva.
+
+La sesión de checkout se crea cuando la Rider App solicita a Payments App preparar el pago de una reserva mediante:
+
+```http
+POST /api/payments/reservations/:reservation_id/checkout
+```
+
+Esta entidad permite registrar el saldo a favor disponible al momento de iniciar el pago, el saldo aplicado y el monto que finalmente debe cobrarse mediante Mercado Pago.
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `id` | string | Identificador interno del checkout. |
+| `reservation_id` | string | Identificador externo de la reserva en Rider App. |
+| `pool_id` | string | Identificador externo del pool creado en Driver App. |
+| `passenger_user_id` | string | Identificador del pasajero en Clerk. |
+| `max_price` | number | Precio máximo de la reserva. |
+| `available_credit_at_creation` | number | Saldo disponible del usuario al momento de crear el checkout. |
+| `credit_applied` | number | Saldo a favor aplicado al pago de esta reserva. |
+| `amount_to_charge` | number | Monto que debe cobrarse por Mercado Pago luego de aplicar saldo a favor. |
+| `currency` | string | Moneda del pago. Ejemplo: `ARS`. |
+| `status` | string | Estado del checkout. |
+| `payment_url` | string, nullable | URL a la pantalla de pago generada por Payments App o Mercado Pago. |
+| `created_at` | datetime | Fecha de creación del checkout. |
+
+Estados sugeridos de `status`:
+
+```text
+CREATED
+PAID
+DENIED
+CANCELED
+```
+
+Relaciones:
+
+- Un checkout pertenece a una reserva externa de Rider App.
+- Un checkout pertenece a un pool externo de Driver App.
+- Un checkout puede generar un cobro en `charges`.
+- Un checkout puede aplicar saldo a favor desde `credit_accounts`.
+
+Notas:
+
+- Si `amount_to_charge = 0`, el pago puede completarse usando únicamente saldo a favor.
+- Si `amount_to_charge > 0`, la Payments App genera una instancia de pago mediante Mercado Pago.
+- El checkout no reemplaza al cobro; solo representa la preparación del pago.
+
 
 ---
 
@@ -2209,21 +2561,28 @@ Relaciones:
 
 Representa el cobro de una reserva individual.
 
+En el nuevo flujo, el cobro se realiza al momento de reservar, no al cierre T-1h.
+
+El pasajero paga el precio máximo de la reserva. Antes de cobrar por Mercado Pago, la Payments App aplica el saldo a favor disponible del usuario.
+
 | Campo | Tipo | Descripción |
 |------|------|-------------|
 | `id` | string | Identificador interno del cobro. |
 | `transaction_id` | string | Identificador de transacción informado a otras apps. |
-| `auto_charge_job_id` | string, nullable | Proceso de cobro automático asociado. |
+| `checkout_session_id` | string, nullable | Checkout que originó el cobro. |
+| `pool_price_finalization_job_id` | string, nullable | Proceso de finalización de precio que calculó el precio final y el crédito generado. |
 | `pool_id` | string | Identificador externo del pool. |
 | `reservation_id` | string | Identificador externo de la reserva en Rider App. |
 | `passenger_user_id` | string | Identificador del pasajero en Clerk. |
-| `payment_method_id` | string, nullable | Método de pago utilizado. |
-| `max_price` | number | Precio máximo informado para la reserva. |
-| `effective_price` | number, nullable | Precio efectivamente cobrado. |
+| `max_price` | number | Precio máximo de la reserva. |
+| `credit_applied` | number | Saldo a favor utilizado para pagar esta reserva. |
+| `amount_charged` | number | Monto efectivamente cobrado mediante Mercado Pago. |
+| `final_trip_price` | number, nullable | Precio final calculado al cierre T-1h. |
+| `credit_granted` | number | Saldo a favor generado para próximos viajes. |
 | `currency` | string | Moneda del cobro. Ejemplo: `ARS`. |
 | `status` | string | Estado del cobro. |
-| `rejection_reason` | string, nullable | Motivo de rechazo si el cobro fue denegado. |
-| `processed_at` | datetime, nullable | Fecha de procesamiento del cobro. |
+| `rejection_reason` | string, nullable | Motivo de rechazo si el pago fue denegado. |
+| `processed_at` | datetime, nullable | Fecha de procesamiento del pago. |
 
 Estados sugeridos de `status`:
 
@@ -2238,29 +2597,24 @@ Relaciones:
 
 - Un cobro pertenece a una reserva externa de Rider App.
 - Un cobro pertenece a un pool externo de Driver App.
-- Un cobro puede tener descuentos aplicados.
-- Un cobro exitoso debe ser notificado a Rider App.
-- Un cobro rechazado debe ser notificado a Rider App y Driver App.
+- Un cobro puede originarse en una sesión de checkout.
+- Un cobro puede ser actualizado por un proceso `pool_price_finalization_jobs`.
+- Un cobro puede aplicar saldo a favor mediante un movimiento `CREDIT_APPLIED`.
+- Un cobro puede generar saldo a favor mediante un movimiento `CREDIT_GRANTED`.
 
+Notas:
+
+- `max_price` es el precio máximo aceptado por el pasajero al reservar.
+- `credit_applied` es el saldo a favor usado para reducir el monto a cobrar.
+- `amount_charged` es el monto cobrado por Mercado Pago.
+- `final_trip_price` se completa cuando se calculan los ajustes de crédito del pool.
+- `credit_granted` se completa cuando el precio final resulta menor que el precio máximo pagado.
+- El detalle de qué regla de descuento se usó se registra a nivel del proceso `pool_price_finalization_jobs`.
+- Si el pago es rechazado, la Payments App notifica a Rider App mediante `PATCH /api/reservations/:reservation_id/payment-result`, Rider App mantiene `reservation_status = PENDING_PAYMENT` y permite reintento.
+- Si el checkout es cancelado o expira, la Payments App lo informa mediante `PATCH /api/reservations/:reservation_id/payment-result` y Rider App pasa la reserva a `CANCELED`.
+- Si el pago falla, la reserva no debe formar parte efectiva del pool.
 ---
 
-### `charge_discounts`
-
-Representa los descuentos aplicados a un cobro.
-
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `id` | string | Identificador del descuento aplicado. |
-| `charge_id` | string | Cobro asociado. |
-| `type` | string | Tipo de descuento. Ejemplo: `OCCUPANCY_DISCOUNT`. |
-| `amount` | number | Monto descontado. |
-| `description` | string, nullable | Descripción del descuento. |
-
-Relaciones:
-
-- Un cobro puede tener cero, uno o varios descuentos aplicados.
-
----
 
 ### `settlements`
 
@@ -2290,6 +2644,98 @@ Relaciones:
 - Una liquidación pertenece a un pool externo.
 - Una liquidación corresponde a un conductor identificado por `driver_user_id`.
 - Una liquidación puede agrupar los cobros exitosos de un pool.
+
+---
+
+### `credit_accounts`
+
+Representa el saldo a favor acumulado de un usuario.
+
+La Payments App es la fuente de verdad del saldo a favor.
+
+Cada usuario que tenga saldo a favor puede tener una cuenta de crédito asociada. Si un usuario todavía no tiene cuenta de crédito, se considera que su saldo disponible es `0`.
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `id` | string | Identificador de la cuenta de crédito. |
+| `user_id` | string | Identificador del usuario en Clerk. |
+| `balance` | number | Saldo disponible. |
+| `currency` | string | Moneda del saldo. Ejemplo: `ARS`. |
+| `updated_at` | datetime | Fecha de última actualización. |
+
+Relaciones:
+
+- Una cuenta de crédito pertenece a un usuario identificado por Clerk.
+- Una cuenta de crédito puede tener múltiples movimientos en `credit_movements`.
+
+Notas:
+
+- La Rider App puede consultar este saldo mediante `GET /api/payments/users/:user_id/credit-balance`.
+- La Rider App no modifica este saldo.
+- La Payments App aplica automáticamente el saldo disponible al crear un checkout.
+
+### `credit_movements`
+
+Representa cada movimiento de saldo a favor.
+
+Esta entidad permite auditar de dónde salió el saldo del usuario y cuándo fue utilizado.
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `id` | string | Identificador del movimiento. |
+| `credit_account_id` | string | Cuenta de crédito asociada. |
+| `user_id` | string | Identificador del usuario en Clerk. |
+| `type` | string | Tipo de movimiento. |
+| `amount` | number | Monto del movimiento. |
+| `currency` | string | Moneda del movimiento. |
+| `reservation_id` | string, nullable | Reserva asociada al movimiento. |
+| `pool_id` | string, nullable | Pool asociado al movimiento. |
+| `charge_id` | string, nullable | Cobro asociado al movimiento. |
+| `pool_price_finalization_job_id` | string, nullable | Proceso de finalización de precio que originó el movimiento, si corresponde. |
+| `description` | string, nullable | Descripción del movimiento. |
+| `created_at` | datetime | Fecha en la que se generó el movimiento. |
+
+Tipos posibles de `type`:
+
+```text
+CREDIT_GRANTED
+CREDIT_APPLIED
+MANUAL_ADJUSTMENT
+```
+
+Relaciones:
+
+- Un movimiento pertenece a una cuenta de crédito.
+- Un movimiento puede estar asociado a una reserva.
+- Un movimiento puede estar asociado a un pool.
+- Un movimiento puede estar asociado a un cobro.
+- Un movimiento puede estar asociado a un proceso `pool_price_finalization_jobs`.
+
+Notas:
+
+- `CREDIT_GRANTED` se utiliza cuando Payments App genera saldo a favor para el usuario.
+- `CREDIT_APPLIED` se utiliza cuando Payments App aplica saldo a favor en un checkout.
+- `MANUAL_ADJUSTMENT` se reserva para correcciones administrativas.
+- Cuando el saldo a favor se genera por descuento de ocupación, el movimiento puede estar relacionado con un proceso `pool_price_finalization_jobs`.
+- En esta etapa no se modela expiración de crédito.
+
+### Relación entre precio, descuento y saldo a favor
+
+El flujo de precios queda definido de la siguiente manera:
+
+1. Al reservar, el pasajero paga el precio máximo.
+2. Si tiene saldo a favor, Payments App lo aplica antes de cobrar por Mercado Pago.
+3. Al cierre T-1h, Payments App calcula el precio final usando `pricing_rules` y la ocupación real del pool.
+4. Si el precio final es menor al precio máximo pagado, la diferencia queda registrada dentro del proceso `pool_price_finalization_jobs` como descuento por ocupación.
+5. Esa diferencia se acredita al pasajero como saldo a favor mediante un movimiento `CREDIT_GRANTED` en `credit_movements`.
+6. Cada cobro individual se actualiza con `final_trip_price` y `credit_granted`.
+
+De esta manera:
+
+- `pricing_rules` define cómo se calculan los precios y descuentos.
+- `pool_price_finalization_jobs` registra qué regla se aplicó y cuál fue el descuento por ocupación del pool.
+- `charges` registra el resultado individual aplicado a cada reserva.
+- `credit_movements` registra el movimiento de saldo a favor generado por ese descuento.
 
 ---
 
@@ -2392,6 +2838,38 @@ Relaciones:
 - Un reporte tiene un usuario autor y un usuario reportado.
 - Puede asociarse a un pool o reserva externa para dar contexto.
 
+---
+
+### `users`
+
+Representa una referencia local mínima de usuarios dentro de la Feedback App.
+
+La entidad se utiliza únicamente para facilitar relaciones internas, consultas y cálculos asociados a reseñas y reportes.
+
+La identidad global del usuario sigue perteneciendo a Clerk.
+
+| Campo        | Tipo             | Descripción                                                      |
+| ------------ | ---------------- | ---------------------------------------------------------------- |
+| `id`         | string           | Identificador compartido del usuario en Clerk (`clerk_user_id`). |
+| `name`       | string, nullable | Nombre visible del usuario.                                      |
+| `role`       | string           | Rol operativo principal del usuario dentro de Feedback App.      |
+| `created_at` | datetime         | Fecha de creación del registro local.                            |
+
+Relaciones:
+
+* Un usuario puede ser autor de muchas reseñas.
+* Un usuario puede recibir muchas reseñas.
+* Un usuario puede realizar muchos reportes.
+* Un usuario puede ser reportado muchas veces.
+
+Notas:
+
+* Esta entidad no reemplaza a Clerk como fuente de verdad.
+* Los roles efectivos del contexto del viaje se determinan mediante campos contextualizados como `author_role`, `target_role`, `reporter_role` y `reported_role`.
+* En esta etapa del sistema, cada usuario opera con un único rol principal dentro de la plataforma (PASSENGER o DRIVER).
+
+---
+
 
 
 ## Datos duplicados y estrategia de consistencia
@@ -2403,17 +2881,23 @@ Relaciones:
 | `pool_id` | Driver, Rider, Payments, Feedback | Driver App | Driver App genera el `pool_id`. Las demás apps lo guardan como referencia externa y consultan a Driver App cuando necesitan estado operativo del pool. |
 | `reservation_id` | Rider, Driver, Payments, Feedback | Rider App | Rider App genera la reserva. Driver, Payments y Feedback la guardan como referencia externa cuando necesitan asociar datos al pasajero o al viaje. |
 | Estado del pool | Driver, visible en Rider y Feedback | Driver App | Rider App y Feedback App consultan el estado del pool mediante `GET /api/pools/:pool_id/status`. No deben modificarlo directamente. |
-| Estado de la reserva | Rider, referenciado en Payments y Driver | Rider App | Rider App mantiene el estado de reserva. Payments App informa resultados de pago y Rider App actualiza la reserva. |
+| Estado operativo de la reserva | Rider | Rider App | Rider App mantiene `reservation_status`. Las demás apps no deben modificarlo directamente. |
+| Estado del pago | Payments, Rider | Payments App | Payments App informa el resultado del pago a Rider App mediante `PATCH /api/reservations/:reservation_id/payment-result`. Rider App guarda el estado para mostrarlo al usuario y controlar el flujo de reserva. |
 | Pasajeros de un pool | Rider, consultado por Driver, Payments y Feedback | Rider App | Rider App expone `GET /api/pools/:pool_id/passengers`. Driver, Payments y Feedback consumen este endpoint según su necesidad. |
-| Manifiesto operativo final | Driver, originado desde Rider | Driver App como snapshot operativo | Driver App obtiene pasajeros `PAID` desde Rider App y guarda una copia local para ejecutar el recorrido aun si luego hay fallos de comunicación. |
-| Precio máximo de reserva | Rider, calculado por Payments | Payments App para cálculo, Rider App para snapshot comercial | Payments calcula el precio máximo. Rider App lo guarda en la reserva como valor inmutable. |
-| Precio efectivo pagado | Payments, Rider | Payments App | Payments App calcula y persiste el cobro real. Rider App guarda `effective_price` informado por Payments para mostrarlo en resumen e historial. |
+| Manifiesto operativo final | Driver, originado desde Rider | Driver App como snapshot operativo | Driver App obtiene pasajeros con `payment_status = PAID` desde Rider App y guarda una copia local para ejecutar el recorrido aun si luego hay fallos de comunicación. |
+| Precio máximo de reserva | Rider, Payments | Payments App para cálculo, Rider App para snapshot comercial | Payments calcula el precio máximo. Rider App lo guarda en la reserva como valor inmutable. |
+| Reglas de precio y descuentos | Payments | Payments App | Payments App utiliza `pricing_rules` para calcular precio máximo, precio estimado, precio final y descuento por ocupación. |
+| Descuento por ocupación aplicado al pool | Payments | Payments App | Payments App registra el descuento aplicado a nivel del proceso `pool_price_finalization_jobs`, porque el cálculo depende de la ocupación final del pool. |
+| Monto cobrado | Payments, Rider | Payments App | Payments App calcula y persiste `amount_charged`. Rider App guarda el valor informado para mostrarlo en resumen e historial. |
+| Saldo a favor aplicado | Payments, Rider | Payments App | Payments App aplica el saldo a favor al crear el checkout. Rider App guarda `credit_applied` informado por Payments. |
+| Precio final del viaje | Payments, Rider | Payments App | Payments App calcula `final_trip_price` al cierre T-1h. Rider App guarda el valor informado para mostrarlo en el historial. |
+| Saldo a favor generado | Payments, Rider | Payments App | Payments App genera y persiste el saldo a favor. Rider App guarda `credit_granted` para mostrar notificaciones, resumen e historial. |
+| Saldo a favor disponible | Payments, visible en Rider | Payments App | Rider App puede consultar el saldo mediante `GET /api/payments/users/:user_id/credit-balance`, pero no lo calcula ni modifica. |
 | Detalle de pagos y transacciones | Payments, referenciado en Rider | Payments App | Rider App solo guarda datos mínimos del resultado de pago. Payments App mantiene el detalle financiero completo. |
 | Información de conductor y vehículo asignados | Driver, Rider | Driver App | Driver App es la fuente de verdad. Rider App guarda un snapshot mínimo dentro de la reserva cuando el pool pasa a `ASSIGNED`, para mostrar resumen e historial del viaje. |
 | Promedio de calificaciones | Feedback, visible en Rider y Driver | Feedback App | Rider App y Driver App consultan a Feedback App cuando necesitan mostrar reputación. No calculan promedios localmente. |
 | Reseñas | Feedback | Feedback App | Feedback App crea, habilita y completa reseñas. Otras apps solo reciben notificaciones o redirigen al usuario. |
 | Reportes | Feedback | Feedback App | Feedback App persiste reportes y estados de moderación. |
-
 ---
 
 ## Estrategias generales ante inconsistencias
@@ -2457,9 +2941,11 @@ Una app no debe recalcular datos que pertenecen a otra.
 Ejemplos:
 
 - Rider App no calcula precios: los solicita a Payments App.
+- Rider App no calcula saldo a favor: lo consulta o recibe desde Payments App.
 - Driver App no calcula calificaciones: las solicita a Feedback App.
 - Feedback App no asume pasajeros de un pool: los solicita a Rider App.
-- Payments App no asume pasajeros a cobrar: los solicita a Rider App.
+- Payments App no asume pasajeros pagados de un pool: los solicita a Rider App.
+- Rider App no modifica el saldo a favor: Payments App es la fuente de verdad.
 
 ---
 
@@ -2471,9 +2957,10 @@ Por eso, el sistema puede tener breves períodos de consistencia eventual.
 
 Ejemplos:
 
-- Payments App procesa un cobro y luego notifica a Rider App.
-- Payments App notifica a Driver App cuando un pago rechazado debe descontarse del pool.
+- Payments App procesa un pago y luego notifica a Rider App.
+- Payments App genera saldo a favor y luego notifica a Rider App para que muestre la notificación al pasajero.
 - Driver App cambia el estado del pool y Rider App lo detecta mediante polling.
+- Driver App solicita a Payments App calcular ajustes de crédito al cierre T-1h.
 - Feedback App consulta el estado del pool para detectar avance o finalización.
 
 ---
@@ -2484,9 +2971,12 @@ Las operaciones inter-servicio importantes deberían poder recibirse más de una
 
 Ejemplos:
 
+- creación de checkout para una reserva;
 - notificación de pago exitoso;
 - notificación de pago rechazado;
 - cancelación de pool por falta de conductor;
+- cálculo de ajustes de crédito del pool;
+- notificación de crédito generado;
 - pre-creación de reseñas;
 - notificación de reseñas disponibles.
 
@@ -2495,6 +2985,9 @@ Para esto, las apps pueden usar identificadores como:
 - `reservation_id`;
 - `pool_id`;
 - `transaction_id`;
+- `checkout_session_id`;
+- `pool_price_finalization_job_id`;
+- `credit_movement_id`;
 - `review_id`.
 
 ---
@@ -2509,18 +3002,24 @@ Para esto, las apps pueden usar identificadores como:
 | Vehículos | Driver App |
 | Destinos | Rider App |
 | Reservas | Rider App |
+| Estado operativo de la reserva | Rider App |
+| Estado del pago | Payments App |
 | Pools | Driver App |
 | Estado operativo del viaje | Driver App |
 | Pasajeros de un pool | Rider App |
 | Manifiesto operativo final | Driver App |
-| Precios y descuentos | Payments App |
+| Precios | Payments App |
+| Reglas de descuento | Payments App |
+| Descuento por ocupación aplicado al pool | Payments App |
+| Checkout de reservas | Payments App |
 | Cobros y transacciones | Payments App |
+| Saldo a favor | Payments App |
+| Movimientos de saldo a favor | Payments App |
+| Ajustes de crédito del pool | Payments App |
 | Liquidaciones | Payments App |
 | Reseñas | Feedback App |
 | Promedios de calificación | Feedback App |
 | Reportes | Feedback App |
-
-
 
 # 1.5 — Usuarios Compartidos
 
@@ -2550,8 +3049,8 @@ sub
 
 | Usuario | Apps donde puede autenticarse | Descripción |
 |---------|------------------------------|-------------|
-| **Empleado / Pasajero (`rider`)** | Rider App, Payments App, Feedback App | Puede solicitar viajes, reservar lugares en pools, configurar su método de pago, pagar automáticamente y calificar al conductor al finalizar el viaje. |
-| **Conductor (`driver`)** | Driver App, Payments App, Feedback App | Puede aceptar pools desde el marketplace, gestionar el recorrido, configurar su cuenta de cobro, recibir liquidaciones y calificar pasajeros. |
+| **Empleado / Pasajero (`rider`)** | Rider App, Payments App, Feedback App | Puede solicitar viajes, reservar lugares en pools, pagar reservas desde Payments App, utilizar saldo a favor disponible, consultar pagos asociados a sus viajes y calificar al conductor al finalizar el viaje. |
+| **Conductor (`driver`)** | Driver App, Payments App, Feedback App | Puede aceptar pools desde el marketplace, gestionar el recorrido, configurar o consultar su cuenta de cobro, recibir liquidaciones y calificar pasajeros. |
 | **Administrador (`admin`)** | Rider App, Driver App, Payments App, Feedback App y posteriormente Control Plane | Puede gestionar datos principales, consultar listados, revisar reportes y administrar operaciones del sistema. |
 
 ---
@@ -2575,12 +3074,14 @@ Permisos principales:
 - acceder a Rider App;
 - solicitar viajes;
 - crear reservas;
+- pagar reservas desde Payments App;
+- utilizar saldo a favor disponible en próximos viajes;
+- consultar pagos asociados a sus viajes;
+- consultar su saldo a favor disponible;
 - visualizar estado del viaje;
-- configurar método de pago desde Payments App;
-- visualizar pagos asociados a sus viajes;
+- recibir notificaciones cuando se genere saldo a favor;
 - completar reseñas desde Feedback App;
 - visualizar su promedio de calificaciones y reportes recibidos según corresponda.
-
 ---
 
 ### `driver`
@@ -2593,7 +3094,8 @@ Permisos principales:
 - visualizar pools disponibles en el marketplace;
 - aceptar viajes;
 - actualizar el estado operativo del viaje;
-- configurar cuenta de cobro desde Payments App;
+- consultar información de liquidaciones desde Payments App;
+- configurar o consultar su cuenta de cobro desde Payments App, si corresponde;
 - recibir liquidaciones;
 - completar reseñas a pasajeros desde Feedback App;
 - visualizar su promedio de calificaciones y reportes recibidos según corresponda.
@@ -2634,7 +3136,7 @@ Los siguientes claims deben estar disponibles en el JWT utilizado por las aplica
 |-----|------------------|----------------------|
 | **Rider App** | `sub`, `role`, `company_code` | Identificar al pasajero, verificar que tenga rol `rider` o `admin`, validar pertenencia a una empresa industrial y asociar reservas al usuario. |
 | **Driver App** | `sub`, `role` | Identificar al conductor, verificar que tenga rol `driver` o `admin`, y asociar pools o acciones operativas al conductor autenticado. |
-| **Payments App** | `sub`, `role` | Identificar al usuario que configura un método de pago o cuenta de cobro. El rol permite distinguir si el usuario opera como pasajero, conductor o administrador. |
+| **Payments App** | `sub`, `role` | Identificar al usuario que paga una reserva, consulta saldo a favor, utiliza crédito disponible, consulta pagos o recibe liquidaciones. El rol permite distinguir si el usuario opera como pasajero, conductor o administrador. |
 | **Feedback App** | `sub`, `role` | Identificar al autor de una reseña o reporte y validar si está actuando como pasajero, conductor o administrador. |
 | **Control Plane** *(futuro)* | `sub`, `role` | Permitir acceso únicamente a usuarios con rol `admin`. |
 
@@ -2754,6 +3256,39 @@ Cada app debe validar el JWT en sus rutas protegidas.
 
 ---
 
+## Uso de Payments App por rol
+
+La Payments App puede ser utilizada por distintos tipos de usuario, pero cada rol accede a funcionalidades diferentes.
+
+| Rol | Uso dentro de Payments App |
+|-----|-----------------------------|
+| `rider` | Pagar reservas, consultar pagos realizados, consultar saldo a favor disponible y utilizar crédito en próximos viajes. |
+| `driver` | Consultar liquidaciones y configurar o consultar su cuenta de cobro, si corresponde. |
+| `admin` | Gestionar reglas de precio, revisar cobros, consultar saldos a favor, auditar movimientos de crédito y administrar liquidaciones. |
+
+Notas:
+
+- El pasajero ya no necesita dejar cargado un método de pago para cobros automáticos.
+- El pago se realiza al momento de confirmar la reserva, mediante una sesión de checkout en Payments App.
+- El saldo a favor es administrado exclusivamente por Payments App.
+- Rider App puede mostrar el saldo a favor o notificaciones relacionadas, pero no calcula ni modifica ese saldo.
+
+## Consideración sobre métodos de pago
+
+En esta etapa, el sistema no requiere que el pasajero guarde previamente un método de pago para cobros automáticos.
+
+El pasajero paga directamente cada reserva desde Payments App mediante una sesión de checkout.
+
+Por lo tanto:
+
+- no es obligatorio almacenar un método de pago reutilizable del pasajero;
+- no se ejecutan cobros automáticos al cierre T-1h;
+- el cierre T-1h solo se utiliza para calcular el precio final y generar saldo a favor si corresponde.
+
+En futuras etapas, si se decide volver a implementar cobros automáticos, se podrá incorporar nuevamente la vinculación de métodos de pago guardados.
+
+---
+
 ## Identidad compartida entre servicios
 
 Cada app utiliza el claim `sub` como identificador compartido del usuario.
@@ -2762,12 +3297,43 @@ Ejemplos:
 
 - En Rider App, `sub` se guarda como `clerk_user_id` del pasajero.
 - En Driver App, `sub` se guarda como `clerk_user_id` del conductor.
-- En Payments App, `sub` se usa para asociar métodos de pago, cuentas de cobro, cobros y liquidaciones.
+- En Payments App, `sub` se usa para asociar checkouts, cobros, saldo a favor, movimientos de crédito, cuentas de cobro y liquidaciones.
 - En Feedback App, `sub` se usa para identificar autores y destinatarios de reseñas o reportes.
 
 Las apps pueden tener perfiles locales propios, pero todos deben estar relacionados mediante `clerk_user_id`.
 
 ---
+## Saldo a favor y usuario compartido
+
+El saldo a favor pertenece al usuario identificado por Clerk.
+
+La Payments App utiliza el claim `sub` del JWT como identificador del usuario y lo asocia internamente a su cuenta de crédito.
+
+Ejemplo:
+
+```text
+sub = user_abc123
+credit_account.user_id = user_abc123
+```
+
+Reglas:
+
+- La Payments App es la fuente de verdad del saldo a favor.
+- La Rider App puede consultar el saldo disponible mediante `GET /api/payments/users/:user_id/credit-balance`.
+- La Rider App puede recibir notificaciones de crédito generado mediante `PATCH /api/reservations/:reservation_id/credit-adjustment`.
+- La Rider App puede mostrar una notificación o toast al pasajero cuando se genera saldo a favor.
+- La Rider App no debe calcular ni modificar el saldo a favor.
+- El saldo a favor se aplica automáticamente en Payments App al crear un checkout para una nueva reserva.
+
+Ejemplo de notificación al usuario:
+
+```text
+Tenés $1200 de saldo a favor para tu próximo viaje.
+```
+
+
+---
+
 
 ## Usuarios y datos locales por app
 
@@ -2777,7 +3343,7 @@ Aunque Clerk es la fuente de verdad de identidad, cada app puede guardar informa
 |-----|------------------------------------|
 | **Rider App** | Perfil de pasajero, reservas, historial de viajes, notificaciones. |
 | **Driver App** | Perfil de conductor, vehículos, pools aceptados, estado operativo. |
-| **Payments App** | Métodos de pago, cuentas de cobro, transacciones, liquidaciones. |
+| **Payments App** | Checkouts de reserva, cobros, transacciones, saldo a favor, movimientos de crédito, reglas de precio, procesos de finalización de precio del pool, cuentas de cobro y liquidaciones. |
 | **Feedback App** | Reseñas, promedios de calificación, reportes. |
 
 ---
@@ -2821,11 +3387,26 @@ En esta primera etapa no se modela esa complejidad.
 
 ## Autenticación en APIs inter-servicio
 
+## Autenticación en APIs inter-servicio
+
 Las APIs inter-servicio deben validar autenticación.
 
 Cuando la acción se realiza en nombre de un usuario autenticado, se debe propagar el JWT emitido por Clerk para identificarlo mediante `sub` y validar su `role`.
 
-Cuando la acción es ejecutada por un proceso interno o automático, como el cobro automático en T-1h o una notificación entre servicios, puede utilizarse un mecanismo de autenticación inter-servicio acordado por el equipo.
+Ejemplos:
+
+- Rider App solicita un checkout a Payments App en nombre de un pasajero autenticado.
+- Rider App consulta el saldo a favor disponible de un pasajero.
+- Feedback App registra una reseña realizada por un usuario autenticado.
+
+Cuando la acción es ejecutada por un proceso interno o automático, puede utilizarse un mecanismo de autenticación inter-servicio acordado por el equipo.
+
+Ejemplos:
+
+- Payments App notifica a Rider App el resultado de un pago.
+- Payments App notifica a Rider App que se generó saldo a favor.
+- Driver App solicita a Payments App el cálculo de ajustes de crédito al cierre T-1h.
+- Driver App notifica a Feedback App el inicio o fin de un recorrido.
 
 En ambos casos, cada app debe verificar que la aplicación llamadora tenga permisos para ejecutar la acción solicitada.
 
@@ -2841,143 +3422,6 @@ En ambos casos, cada app debe verificar que la aplicación llamadora tenga permi
 | Claim industrial | `company_code` |
 | Fuente de verdad de identidad | Clerk |
 | Fuente de verdad de datos operativos | Cada app según su dominio |
+| Fuente de verdad del saldo a favor | Payments App |
 | Estrategia de autorización | Validar JWT y rol en cada app |
 | Configuración importante | `company_code` debe incluirse explícitamente en el JWT Template o Session Claims |
-
-
-Entregables de la Etapa 1
-1.1 — Descripción del sistema
-Un documento que explique el sistema elegido en términos funcionales:
-
-¿Qué problema resuelve?
-¿Quiénes son los actores del sistema (usuarios finales de cada app, administradores)?
-¿Cuál es el flujo principal de uso? (ej: un pasajero solicita un viaje → un conductor lo acepta → se procesa el pago → ambos se califican)
-1.2 — Asignación de responsabilidades
-Un cuadro que indique claramente:
-
-Qué webapp desarrolla cada integrante.
-Qué datos son propios de cada app (en qué base de datos vive cada entidad).
-Qué datos o acciones requieren comunicación con otra app (y a través de qué API).
-1.3 — Diseño de APIs inter-servicios
-Para cada punto de integración entre aplicaciones, documentar:
-
-Endpoint: método HTTP y ruta (ej: POST /api/payments/charge)
-Request: qué datos envía el llamador
-Response: qué datos responde el servicio
-Quién llama a quién: qué app consume qué endpoint de qué otra app
-Este contrato de API debe estar acordado y firmado por todos los integrantes antes de comenzar la Etapa 2, ya que es la base sobre la que cada uno desarrollará de forma aislada.
-
-1.4 — Modelo de datos por aplicación
-Por cada webapp, un diagrama o descripción de las entidades principales de su base de datos (tablas, relaciones relevantes). No es necesario que sea un DER formal, pero sí que esté claro qué persiste cada app.
-
-Los datos integrados pueden contener duplicados —como en el caso de los usuarios, entre otros— por lo que es necesario identificar las posibles inconsistencias y definir una estrategia para resolverlas.
-
-1.5 — Usuarios compartidos
-El sistema utiliza Clerk como servicio centralizado de autenticación para todas las aplicaciones. Esto significa que los usuarios se autentican a través de Clerk independientemente de qué app estén usando, y la identidad se propaga entre servicios mediante el token JWT emitido por Clerk.
-
-En este punto, la comisión deberá definir:
-
-¿Qué apps comparten usuarios? (ej: en Uber, un rider puede acceder a las apps de pagos, feedback y promociones)
-¿Qué claims del token JWT son relevantes para cada app? (ej: roles, permisos, identificador de usuario compartido entre servicios)
-Etapa 2 — Implementación Individual
-Fecha de entrega: 1 de junio de 2026 Fechas de defensa: 4 y 8 de junio de 2026
-
-Objetivo
-Cada integrante desarrolla su webapp de forma completamente aislada, como si fuera un producto independiente. Al finalizar esta etapa, cada app debe funcionar por sí sola, con datos de prueba propios, sin depender del funcionamiento real de las otras apps.
-
-Las llamadas a APIs de otras webapps deben mockearse o simularse durante esta etapa. Lo importante es que los contratos definidos en la Etapa 1 estén respetados.
-
-Stack tecnológico
-Cada webapp deberá construirse con el siguiente stack tecnológico:
-
-Capa	Tecnología
-Frontend / Full-stack	Next.js
-Base de datos	PostgreSQL (base de datos propia por app)
-Autenticación	Clerk (servicio centralizado compartido por todas las apps)
-Pagos (solo la Payments App)	Mercado Pago en modo sandbox
-Estilos	Tailwind CSS, Chakra UI o Bootstrap
-ORM	Prisma, Knex, o pg directamente
-Deploy	Vercel (una instancia por app) + Railway / Supabase / Neon / Vercel Postgres
-Requisitos de cada webapp individual
-Cada webapp debe cumplir con los siguientes requisitos, adaptados a su dominio:
-
-✅ Páginas y componentes reutilizables en Next.js.
-
-✅ API propia — cada app expone sus propios endpoints REST (los cuales están pensados para las otras apps en la Etapa 3, pero pueden ser utilizados por su frontend de ser necesario).
-
-✅ Base de datos PostgreSQL propia — cada app es dueña de sus datos.
-
-✅ Autenticación — login/logout para usuarios administradores (obligatorio). Login para usuarios finales según corresponda al dominio de la app.
-
-✅ Panel de administración — el usuario administrador debe poder gestionar los datos principales de la app y visualizar al menos un listado o reporte relevante.
-
-✅ Búsqueda y paginación — donde aplique, implementar búsqueda y paginación con parámetros en la URL.
-
-✅ Manejo de errores — errores generales y páginas 404.
-
-✅ Validación de formularios del lado del servidor.
-
-✅ Accesibilidad — aplicar buenas prácticas básicas.
-
-✅ Consumo de al menos una API externa — integrar un servicio externo que aporte valor al dominio de la app. Debe hacerse un request real y procesarse la respuesta (no embeds). Las APIs de las otras webapps del mismo proyecto cuentan como externas a los fines de este requisito.
-
-✅ Integración con Mercado Pago (solo para la Payments App) — flujo de pago en modo sandbox.
-
-✅ Opcional — IA — se puede incorporar funcionalidad basada en inteligencia artificial (sugerencias, chatbot, descripciones automáticas, etc.). No es obligatorio, pero suma.
-
-Variables de entorno y secretos
-Cada app utiliza credenciales sensibles que nunca deben commitearse al repositorio: connection strings de la base de datos, claves de Clerk, credenciales de Mercado Pago, claves de APIs externas, etc.
-
-Usar un archivo .env.local para las variables de entorno en desarrollo local. Este archivo debe estar incluido en el .gitignore.
-En Vercel, configurar esas mismas variables desde el panel de configuración del proyecto (Settings → Environment Variables).
-Incluir en el repositorio un archivo .env.example con los nombres de las variables necesarias pero sin sus valores, para que cualquiera que clone el repo sepa qué configurar.
-Nota sobre el aislamiento
-Durante esta etapa, las apps no necesitan estar conectadas entre sí. Cada integrante trabaja en su propio repositorio, con su propio deploy. Si una app necesita datos de otra (ej: la Rider App necesita saber si un conductor está disponible), debe usar datos mockeados o un stub del endpoint esperado.
-
-Entregables de la Etapa 2
-Cada integrante deberá entregar, de acuerdo a la webapp que le fue asignada en la Etapa 1:
-
-Aplicación web funcional — la webapp correspondiente, deployada en Vercel y accesible mediante un link de producción.
-Código fuente completo — todo el código disponible en el repositorio designado para esa app, con historial de commits que refleje el desarrollo individual.
-Datos cargados — la aplicación no puede estar vacía. Debe contar con datos relevantes precargados que permitan evaluarla sin necesidad de cargar información manualmente (ej: viajes realizados, pedidos en distintos estados, productos publicados, transacciones procesadas, reseñas cargadas).
-README — breve y conciso, debe incluir: descripción de la app, link al deploy, y credenciales o instrucciones para acceder con cada tipo de usuario disponible (ej: administrador, usuario final). No debe ser extenso.
-Etapa 3 — Integración y Aplicaciones Globales
-Fecha de entrega: 25 de Junio de 2026
-Fechas de defensa: 29 de Junio de 2026 y 2 de Julio de 2026
-
-Objetivo
-En esta etapa, las aplicaciones individuales se conectan entre sí y la comisión desarrolla dos aplicaciones transversales que operan sobre el sistema completo.
-
-3.1 — Integración entre webapps
-Reemplazar los mocks de la Etapa 2 por llamadas reales a los endpoints de las otras apps, respetando los contratos definidos en la Etapa 1. Se espera que al menos los flujos principales del sistema funcionen de punta a punta.
-
-Ejemplos de flujos integrados:
-
-Uber: un pasajero solicita un viaje (Rider App) → un conductor lo acepta (Driver App) → al finalizar, se cobra el pago (Payments App) → ambos se califican (Feedback App).
-Delivery: un comprador hace un pedido (Buyer App) → el vendedor lo confirma (Seller App) → un repartidor lo retira y entrega (Delivery App) → se procesa el pago (Payments App).
-Marketplace: un comprador compra un producto (Buyer App) → el vendedor lo despacha (Seller App) → el operador gestiona el envío (Shipping App) → el pago se acredita al vendedor (Payments App).
-3.2 — Control Plane
-Una nueva webapp (desarrollada de forma colaborativa por la comisión) que actúa como panel de administración global del sistema. Permite a un superadministrador operar sobre todas las apps desde un único lugar.
-
-Funcionalidades esperadas:
-
-Visión consolidada de las entidades principales de cada app (usuarios, transacciones, pedidos, etc.).
-Acciones de gestión sobre cualquiera de las apps: activar/desactivar usuarios, resolver disputas, gestionar configuraciones globales.
-Comunicación con las APIs de cada webapp individual.
-No reemplaza los paneles de administración individuales de cada app, sino que los complementa con una vista de mayor nivel.
-
-3.3 — Analytics Dashboard
-Una segunda webapp nueva (también colaborativa) que presenta métricas y reportes sobre el sistema completo.
-
-Funcionalidades esperadas:
-
-Indicadores clave del negocio: volumen de transacciones, usuarios activos, pedidos completados, ingresos, calificaciones promedio, etc.
-Visualizaciones (tablas, gráficos o indicadores) que permitan entender el estado del sistema de un vistazo.
-Datos consolidados obtenidos consultando las APIs de las webapps individuales.
-El Analytics Dashboard no es un CRUD — es una herramienta de lectura y análisis. La complejidad está en consolidar datos de múltiples fuentes y presentarlos de manera útil.
-
-Entregables de la Etapa 3
-Control Plane y Analytics Dashboard — ambas aplicaciones deployadas en Vercel, con código completo en sus respectivos repositorios y un README breve con link al deploy e instrucciones para acceder con cada tipo de usuario.
-Aplicaciones individuales integradas — las webapps de la Etapa 2 debidamente conectadas entre sí, con los mocks reemplazados por llamadas reales, de forma que al menos los flujos principales del sistema funcionen de punta a punta.
-Datos cargados — el sistema completo debe contar con datos relevantes precargados que permitan recorrerlo y evaluarlo sin necesidad de cargar información manualmente (ej: viajes realizados, pedidos en distintos estados, transacciones procesadas).
-Al menos un flujo de punta a punta demostrable en la defensa.

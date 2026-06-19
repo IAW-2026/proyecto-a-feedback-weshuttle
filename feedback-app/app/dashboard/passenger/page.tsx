@@ -93,6 +93,8 @@ export default async function PassengerDashboard() {
         ).toFixed(1)
       : "0.0"
 
+  const riderAppUrl = process.env.NEXT_PUBLIC_RIDER_APP_URL || "https://proyecto-a-rider-weshuttle.vercel.app/"
+
   return (
     <div className="ws-page">
 
@@ -116,6 +118,15 @@ export default async function PassengerDashboard() {
             <p className="text-lg text-[var(--ws-slate)] max-w-xl leading-relaxed">
               Ayudanos a mejorar cada viaje con una reseña rápida y sencilla.
             </p>
+
+            <div className="mt-6">
+              <a
+                href={riderAppUrl}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-[var(--ws-outline)] rounded-lg text-sm font-bold text-[var(--ws-midnight)] bg-white hover:bg-slate-50 hover:text-[var(--ws-midnight)] transition-all active:scale-95 cursor-pointer shadow-xs"
+              >
+                ← Volver a Rider App
+              </a>
+            </div>
 
           </div>
 

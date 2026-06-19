@@ -163,6 +163,8 @@ export default async function DriverDashboard() {
         ).toFixed(1)
       : "0.0"
 
+  const driverAppUrl = process.env.NEXT_PUBLIC_DRIVER_APP_URL || "https://proyecto-a-driver2-weshuttle.vercel.app"
+
   return (
     <div className="ws-page">
 
@@ -186,6 +188,15 @@ export default async function DriverDashboard() {
             <p className="text-lg text-[var(--ws-slate)] max-w-xl leading-relaxed">
               Trackear el feedback del pasajero y mejorar cada experiencia del conductor.
             </p>
+
+            <div className="mt-6">
+              <a
+                href={driverAppUrl}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-[var(--ws-outline)] rounded-lg text-sm font-bold text-[var(--ws-midnight)] bg-white hover:bg-slate-50 hover:text-[var(--ws-midnight)] transition-all active:scale-95 cursor-pointer shadow-xs"
+              >
+                ← Volver a Driver App
+              </a>
+            </div>
 
           </div>
 
