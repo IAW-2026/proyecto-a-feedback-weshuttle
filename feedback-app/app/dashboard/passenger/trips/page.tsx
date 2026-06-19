@@ -1,10 +1,11 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import { Suspense } from "react"
 
 import Navbar from "../../../components/NavBar"
 import { prisma } from "../../../../lib/prisma"
 import { getCurrentUser } from "@/lib/current-user"
-import ReportReviewModal from "../../../components/ReportReviewModal" // Importar el modal de reporte
+import PassengerTripsList from "../../../components/PassengerTripsList"
 import { Prisma } from "@prisma/client"
 
 type ReviewWithDriver = Prisma.ReviewGetPayload<{
@@ -161,121 +162,9 @@ export default async function PassengerTripsPage() {
         </section>
 
         {/* TRIPS */}
-
-        {trips.length > 0 ? (
-
-          <section className="space-y-6">
-
-            {trips.map((trip, index) => {
-
-              const tripDate =
-                trip.completed_at ??
-                trip.enabled_at ??
-                trip.createdAt
-              const isReported = trip.reports.length > 0
-
-              return (
-
-                <article key={trip.id} className="ws-card ws-card-large">
-
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-8">
-
-                    <div>
-
-                      <div className="flex items-center gap-3 mb-3">
-
-                          <span className="ws-pill ws-pill-info uppercase tracking-wider">
-                          Viaje #{trips.length - index}
-                        </span>
-
-                        <span className="text-neutral-400">
-                          •
-                        </span>
-
-                          <p className="text-sm text-[var(--ws-slate)]">
-                          Pool ID: {trip.pool_id.slice(0, 8)}
-                        </p>
-
-                      </div>
-
-                      <h2 className="text-3xl font-black tracking-tight mb-3 text-[var(--ws-midnight)]">
-                        {formatTripDate(tripDate)}
-                      </h2>
-
-                      <p className="text-[var(--ws-slate)] leading-relaxed">
-                        Feedback recibido del conductor.
-                      </p>
-
-                    </div>
-
-                    <div className="bg-[var(--ws-info-soft)] rounded-[12px] px-5 py-4 border border-[var(--ws-outline)]">
-
-                      <p className="text-xs text-[var(--ws-slate)] mb-1 font-semibold">
-                        Calificación
-                      </p>
-
-                      <p className="text-2xl font-black text-[var(--ws-success)]">
-                        {trip.rating || 0}★
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                  <div className="mb-5">
-
-                    <p className="text-sm text-[var(--ws-slate)] mb-1 font-semibold">
-                      Conductor
-                    </p>
-
-                    <h3 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
-                      {trip.author?.name || "Conductor"}
-                    </h3>
-
-                  </div>
-
-                  <div className="flex gap-1 text-3xl mb-5 text-green-600">
-
-                    {"★".repeat(trip.rating || 0)}
-
-                  </div>
-
-                  <p className="text-lg leading-relaxed text-[var(--ws-midnight)]">
-
-                    {trip.comment || "Sin comentario registrado."}
-
-                  </p>
-
-                  <div className="flex justify-end pt-4 border-t border-[var(--ws-outline)]">
-                    <ReportReviewModal
-                      reviewId={trip.id}
-                      reporterRole="rider" // El pasajero está reportando al conductor
-                      initialIsReported={isReported}
-                    />
-                  </div>
-
-                </article>
-
-              )
-            })}
-
-          </section>
-
-        ) : (
-
-          <section className="ws-card ws-card-large">
-
-            <p className="text-sm text-[var(--ws-slate)] mb-2 font-semibold">
-              Todavía no tenés viajes con feedback.
-            </p>
-
-            <h2 className="text-3xl font-black tracking-tight mb-3 text-[var(--ws-midnight)]">
-              Cuando un conductor complete una reseña, aparecerá acá.
-            </h2>
-
-          </section>
-
-        )}
+        <Suspense fallback={<div className="text-sm text-[var(--ws-slate)] animate-pulse">Cargando tus viajes...</div>}>
+          <PassengerTripsList initialTrips={trips as any} />
+        </Suspense>
 
       </main>
 

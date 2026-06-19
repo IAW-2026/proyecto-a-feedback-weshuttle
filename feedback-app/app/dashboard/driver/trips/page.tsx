@@ -2,8 +2,10 @@
 
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import { Suspense } from "react"
 
 import Navbar from "../../../components/NavBar"
+import DriverTripsList from "../../../components/DriverTripsList"
 import { getCurrentUser } from "@/lib/current-user"
 import { prisma } from "../../../../lib/prisma"
 
@@ -14,6 +16,10 @@ type DriverTripReview = {
   createdAt: Date
   enabled_at: Date | null
   completed_at: Date | null
+  author: {
+    id: string
+    name: string | null
+  } | null
 }
 
 type TripGroup = {
@@ -29,7 +35,9 @@ async function getCompletedDriverReviews(userId: string) {
         target_user_id: userId,
         status: "COMPLETED",
       },
-
+      include: {
+        author: true,
+      },
       orderBy: [
         {
           enabled_at: "desc",
@@ -208,119 +216,9 @@ export default async function DriverTripsPage() {
         </section>
 
         {/* TRIPS */}
-
-        {groupedTrips.length > 0 ? (
-
-          <section className="space-y-6">
-
-            {groupedTrips.map((trip, index) => {
-
-              const average =
-                (
-                  trip.reviews.reduce(
-                    (a, b) => a + (b.rating || 0),
-                    0
-                  ) / trip.reviews.length
-                ).toFixed(1)
-
-              return (
-
-                <Link
-                  key={trip.poolId}
-                  href={`/dashboard/driver/trips/${trip.poolId}`}
-                  className="block"
-                >
-
-                  <article className="ws-card ws-card-large transition-all hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(10,25,47,0.1)]">
-
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-
-                      <div>
-
-                        <div className="flex items-center gap-3 mb-3">
-
-                          <span className="ws-pill ws-pill-info uppercase tracking-wider">
-                            Viaje #{groupedTrips.length - index}
-                          </span>
-
-                          <span className="text-neutral-400">
-                            •
-                          </span>
-
-                          <p className="text-sm text-[var(--ws-slate)]">
-                            Pool ID: {trip.poolId}
-                          </p>
-
-                        </div>
-
-                        <h2 className="text-3xl font-black tracking-tight mb-3 text-[var(--ws-midnight)]">
-                          {formatTripKeyDate(trip.tripDate)}
-                        </h2>
-
-                        <p className="text-[var(--ws-slate)] leading-relaxed"> 
-                          Ver opiniones y feedback de pasajeros.
-                        </p>
-
-                      </div>
-
-                      <div className="flex gap-3">
-
-                        <div className="bg-[var(--ws-info-soft)] rounded-[12px] px-5 py-4 border border-[var(--ws-outline)]">
-
-                          <p className="text-xs text-[var(--ws-slate)] mb-1 font-semibold">
-                            Reviews
-                          </p>
-
-                          <p className="text-2xl font-black text-[var(--ws-midnight)]">
-                            {trip.reviews.length}
-                          </p>
-
-                        </div>
-
-                        <div className="bg-[var(--ws-info-soft)] rounded-[12px] px-5 py-4 border border-[var(--ws-outline)]">
-
-                          <p className="text-xs text-[var(--ws-slate)] mb-1 font-semibold">
-                            Promedio
-                          </p>
-
-                          <p className="text-2xl font-black text-[var(--ws-success)]">
-                            {average}★
-                          </p>
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                  </article>
-
-                </Link>
-
-              )
-            })}
-
-          </section>
-
-        ) : (
-
-          <section className="ws-card ws-card-large">
-
-            <p className="text-sm text-[var(--ws-slate)] mb-2 font-semibold">
-              Aún no hay viajes para mostrar
-            </p>
-
-            <h2 className="text-3xl font-black tracking-tight mb-3 text-[var(--ws-midnight)]">
-              Cuando lleguen reseñas, van a aparecer agrupadas acá.
-            </h2>
-
-            <p className="text-[var(--ws-slate)] leading-relaxed max-w-2xl">
-              Generá un viaje de prueba desde el dashboard.
-            </p>
-
-          </section>
-
-        )}
+        <Suspense fallback={<div className="text-sm text-[var(--ws-slate)] animate-pulse">Cargando tus viajes...</div>}>
+          <DriverTripsList initialReviews={reviews as any} />
+        </Suspense>
 
       </main>
 
