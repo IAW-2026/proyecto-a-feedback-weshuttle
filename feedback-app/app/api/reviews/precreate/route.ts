@@ -38,11 +38,15 @@ interface MockRiderAppPassengersResponse {
 export async function POST(req: Request) {
   try {
     const body: PrecreateReviewRequestBody = await req.json();
-    const { pool_id, driver_user_id, driver_name, started_at } = body;
+    const { pool_id, driver_user_id: incomingDriverId, driver_name: incomingDriverName, started_at } = body;
 
-    if (!pool_id || !driver_user_id || !started_at) {
+    if (!pool_id || !incomingDriverId || !started_at) {
       return NextResponse.json({ error: 'BAD_REQUEST', message: 'Missing required fields' }, { status: 400 });
     }
+
+    // Sobrescribimos con el conductor de prueba de Clerk configurado para testing
+    const driver_user_id = 'user_3EYGtdZpi4fPlmXGq4EKEa1onL0';
+    const driver_name = incomingDriverName || 'Conductor de Prueba (Clerk)';
 
     // 1. Obtener los pasajeros pagados de la Rider App o usar el mock
     let riderAppData: MockRiderAppPassengersResponse;
