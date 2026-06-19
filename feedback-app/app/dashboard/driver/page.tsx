@@ -156,11 +156,11 @@ export default async function DriverDashboard() {
   const averageRating =
     completedReviews.length > 0
       ? (
-          completedReviews.reduce(
-            (acc, review) => acc + (review.rating || 0),
-            0
-          ) / completedReviews.length
-        ).toFixed(1)
+        completedReviews.reduce(
+          (acc, review) => acc + (review.rating || 0),
+          0
+        ) / completedReviews.length
+      ).toFixed(1)
       : "0.0"
 
   const driverAppUrl = process.env.NEXT_PUBLIC_DRIVER_APP_URL || "https://proyecto-a-driver2-weshuttle.vercel.app"
@@ -272,7 +272,7 @@ export default async function DriverDashboard() {
 
             {/* SIMULATION TOOLS */}
             <div className="mt-6 ws-card ws-card-large border-dashed border-2 border-[var(--ws-outline)]">
-              
+
               <div className="mb-6">
                 <p className="text-xs font-bold text-[var(--ws-midnight)] uppercase tracking-widest mb-2">
                   Etapa 2 Debug

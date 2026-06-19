@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { updateReportStatus } from '@/prisma/report-actions'
 import ActionModal from './ActionModal'
 import Toast from './Toast'
@@ -15,6 +16,7 @@ interface ReportItem {
   createdAt: string
   reporter_role: string
   reporter_user_id: string
+  reporter_name: string | null
   review: {
     id: string
     pool_id: string
@@ -29,14 +31,51 @@ interface Props {
   initialReports: ReportItem[]
 }
 
-const pageSize = 5
+const PAGE_SIZE = 5
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function highlightText(text: string | null | undefined, search: string) {
+  const str = text || '—'
+  if (!search.trim() || !text) return str
+
+  const regex = new RegExp(`(${escapeRegExp(search)})`, 'gi')
+  const parts = str.split(regex)
+
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark key={i} className="bg-[var(--ws-success-soft)] text-[var(--ws-success)] font-semibold rounded-[2px] px-0.5">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  )
+}
 
 export default function AdminReportsTable({ initialReports }: Props) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const searchQuery = searchParams.get('search') || ''
+  const pageParam = searchParams.get('page') || '1'
+  const roleParam = (searchParams.get('role') || 'all') as 'all' | 'rider' | 'driver'
+
   const [reports, setReports] = useState(initialReports)
   const [expandedTrips, setExpandedTrips] = useState<Record<string, boolean>>({})
   const [updatingReportId, setIsUpdating] = useState<string | null>(null)
-  const [roleFilter, setRoleFilter] = useState<'all' | 'rider' | 'driver'>('all')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [searchInput, setSearchInput] = useState(searchQuery)
+
+  // Sync input with URL on external navigation
+  useEffect(() => {
+    setSearchInput(searchQuery)
+  }, [searchQuery])
 
   // Estado para el Toast
   const [toast, setToast] = useState<{ show: boolean; msg: string; type: 'success' | 'error' }>({
@@ -54,27 +93,76 @@ export default function AdminReportsTable({ initialReports }: Props) {
     variant: 'danger' | 'info' | 'success';
   }>({ isOpen: false, title: '', description: '', variant: 'info' });
 
-  // Agrupamos los reportes por Pool ID (Viaje)
-  const reportsByTrip = useMemo(() => {
-    const groups: Record<string, ReportItem[]> = {}
-    
-    const filtered = roleFilter === 'all' 
-      ? reports 
-      : reports.filter(r => r.reporter_role === roleFilter)
+  const updateParams = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(window.location.search)
+    Object.entries(updates).forEach(([key, val]) => {
+      if (val === null || val === '' || val === 'all') {
+        params.delete(key)
+      } else {
+        params.set(key, val)
+      }
+    })
+    params.set('page', '1')
+    router.replace(`?${params.toString()}`)
+  }
 
-    filtered.forEach((report) => {
+  const handleSearchChange = (val: string) => {
+    setSearchInput(val)
+    const params = new URLSearchParams(window.location.search)
+    if (val.trim()) {
+      params.set('search', val)
+    } else {
+      params.delete('search')
+    }
+    params.set('page', '1')
+    router.replace(`?${params.toString()}`)
+  }
+
+  const handleRoleChange = (role: 'all' | 'rider' | 'driver') => {
+    updateParams({ role: role === 'all' ? null : role })
+  }
+
+  // 1. Apply role filter
+  const roleFiltered = useMemo(() => {
+    return roleParam === 'all'
+      ? reports
+      : reports.filter(r => r.reporter_role === roleParam)
+  }, [reports, roleParam])
+
+  // 2. Group by pool
+  const allGroups: Array<{ poolId: string; tripReports: ReportItem[]; displayNumber: number }> = useMemo(() => {
+    const groups: Record<string, ReportItem[]> = {}
+    roleFiltered.forEach(report => {
       const poolId = report.review.pool_id
       if (!groups[poolId]) groups[poolId] = []
       groups[poolId].push(report)
     })
-    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]))
-  }, [reports, roleFilter])
+    const sorted = Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]))
+    return sorted.map(([poolId, tripReports], idx, arr) => ({
+      poolId,
+      tripReports,
+      displayNumber: arr.length - idx
+    }))
+  }, [roleFiltered])
 
-  const totalPages = Math.max(1, Math.ceil(reportsByTrip.length / pageSize))
-  const visibleTrips = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return reportsByTrip.slice(start, start + pageSize)
-  }, [currentPage, reportsByTrip])
+  // 3. Apply search filter at trip level
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return allGroups
+    const q = searchQuery.toLowerCase()
+    return allGroups.filter(({ tripReports }) =>
+      tripReports.some(report => {
+        const authorName = (report.review.author.name || '').toLowerCase()
+        const recipientName = (report.review.recipient.name || '').toLowerCase()
+        const reporterName = (report.reporter_name || report.reporter_user_id || '').toLowerCase()
+        return authorName.includes(q) || recipientName.includes(q) || reporterName.includes(q)
+      })
+    )
+  }, [allGroups, searchQuery])
+
+  // 4. Paginate
+  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / PAGE_SIZE))
+  const currentPage = Math.min(Math.max(Number(pageParam) || 1, 1), totalPages)
+  const visibleTrips = filteredGroups.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   const toggleTrip = (poolId: string) => {
     setExpandedTrips(prev => ({ ...prev, [poolId]: !prev[poolId] }))
@@ -87,10 +175,10 @@ export default function AdminReportsTable({ initialReports }: Props) {
 
     if (result.success) {
       setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: newStatus } : r))
-      setToast({ 
-        show: true, 
-        msg: newStatus === 'RESUELTO' ? 'Reporte resuelto y reseña ocultada.' : 'Reporte rechazado correctamente.', 
-        type: 'success' 
+      setToast({
+        show: true,
+        msg: newStatus === 'RESUELTO' ? 'Reporte resuelto y reseña ocultada.' : 'Reporte rechazado correctamente.',
+        type: 'success'
       })
     } else {
       setModalConfig({
@@ -132,16 +220,15 @@ export default function AdminReportsTable({ initialReports }: Props) {
   }
 
   return (
-    <div className="space-y-8 relative">
-      <Toast 
+    <div className="space-y-6 relative">
+      <Toast
         isVisible={toast.show}
         message={toast.msg}
         type={toast.type}
         onClose={() => setToast(prev => ({ ...prev, show: false }))}
       />
 
-      {/* Modal de Acción Personalizado */}
-      <ActionModal 
+      <ActionModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
         description={modalConfig.description}
@@ -150,73 +237,97 @@ export default function AdminReportsTable({ initialReports }: Props) {
         onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
       />
 
-      {/* Filtros por Rol */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-2 rounded-2xl border border-[var(--ws-outline)] shadow-sm">
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setRoleFilter('all'); setCurrentPage(1); }}
-            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'all' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => { setRoleFilter('rider'); setCurrentPage(1); }}
-            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'rider' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
-          >
-            Pasajeros
-          </button>
-          <button
-            onClick={() => { setRoleFilter('driver'); setCurrentPage(1); }}
-            className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleFilter === 'driver' ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
-          >
-            Conductores
-          </button>
+      {/* TOOLBAR: Search + Role filter + Pagination */}
+      <div className="flex flex-col gap-4">
+
+        {/* Search bar */}
+        <div className="relative max-w-md">
+          <input
+            type="text"
+            placeholder="Buscar por nombre de autor, destinatario..."
+            value={searchInput}
+            onChange={e => handleSearchChange(e.target.value)}
+            className="ws-input pl-10 pr-4 py-2 text-sm w-full"
+          />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex items-center gap-2 pr-2">
-            <button
-              type="button"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="ws-secondary-button h-10 w-10 p-0 flex items-center justify-center disabled:opacity-40 cursor-pointer"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <span className="text-[10px] font-black text-[var(--ws-slate)] uppercase px-2">
-              Pág. {currentPage} / {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="ws-secondary-button h-10 w-10 p-0 flex items-center justify-center disabled:opacity-40 cursor-pointer"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+        {/* Role pills + pagination */}
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-2 rounded-2xl border border-[var(--ws-outline)] shadow-sm">
+          <div className="flex gap-2">
+            {(['all', 'rider', 'driver'] as const).map(r => (
+              <button
+                key={r}
+                onClick={() => handleRoleChange(r)}
+                className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${roleParam === r ? 'bg-[var(--ws-midnight)] text-white' : 'bg-transparent text-[var(--ws-slate)] hover:bg-slate-50'}`}
+              >
+                {r === 'all' ? 'Todos' : r === 'rider' ? 'Pasajeros' : 'Conductores'}
+              </button>
+            ))}
           </div>
-        )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2 pr-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const params = new URLSearchParams(window.location.search)
+                  params.set('page', String(currentPage - 1))
+                  router.replace(`?${params.toString()}`)
+                }}
+                disabled={currentPage === 1}
+                className="ws-secondary-button h-10 w-10 p-0 flex items-center justify-center disabled:opacity-40 cursor-pointer"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <span className="text-[10px] font-black text-[var(--ws-slate)] uppercase px-2">
+                Pág. {currentPage} / {totalPages}
+                {searchQuery && <span className="ml-1 opacity-60">({filteredGroups.length} viajes)</span>}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const params = new URLSearchParams(window.location.search)
+                  params.set('page', String(currentPage + 1))
+                  router.replace(`?${params.toString()}`)
+                }}
+                disabled={currentPage === totalPages}
+                className="ws-secondary-button h-10 w-10 p-0 flex items-center justify-center disabled:opacity-40 cursor-pointer"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {reportsByTrip.length === 0 ? (
+      {/* Trip cards */}
+      {visibleTrips.length === 0 ? (
         <div className="ws-card p-12 text-center text-[var(--ws-slate)] font-bold">
-          No hay reportes que coincidan con el filtro.
+          {searchQuery ? 'No se encontraron reportes que coincidan con la búsqueda.' : 'No hay reportes que coincidan con el filtro.'}
         </div>
       ) : (
-        visibleTrips.map(([poolId, tripReports]) => (
+        visibleTrips.map(({ poolId, tripReports, displayNumber }) => (
           <div key={poolId} className="ws-card overflow-hidden">
             {/* Cabecera del Viaje */}
-            <button 
+            <button
               onClick={() => toggleTrip(poolId)}
               className="w-full flex items-center justify-between p-6 bg-slate-50 border-b border-[var(--ws-outline)] cursor-pointer hover:bg-slate-100 transition-colors"
             >
-              <div className="flex flex-col items-start">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--ws-slate)]">Viaje / Pool ID</span>
-                <span className="text-xl font-black text-[var(--ws-midnight)]">{poolId}</span>
+              <div className="flex flex-col items-start gap-1">
+                <div className="flex items-center gap-3">
+                  <span className="ws-pill ws-pill-info uppercase tracking-wider text-[10px] font-black">Viaje #{displayNumber}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[var(--ws-slate)]">Pool ID</span>
+                </div>
+                <span className="text-base font-black text-[var(--ws-midnight)]">{poolId}</span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="ws-pill ws-pill-info font-black">
@@ -233,7 +344,7 @@ export default function AdminReportsTable({ initialReports }: Props) {
             {/* Lista de Reportes del Viaje */}
             {expandedTrips[poolId] && (
               <div className="p-0 divide-y divide-[var(--ws-outline)]">
-                {tripReports.map((report) => (
+                {tripReports.map(report => (
                   <div key={report.id} className="p-6 space-y-4">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                       <div className="space-y-1">
@@ -246,22 +357,25 @@ export default function AdminReportsTable({ initialReports }: Props) {
                           </span>
                         </div>
                         <p className="text-sm text-[var(--ws-midnight)] font-medium">
-                          ID Reportero: <span className="font-bold">{report.reporter_user_id}</span> 
+                          Reportado por:{' '}
+                          <span className="font-bold">
+                            {highlightText(report.reporter_name || report.reporter_user_id, searchQuery)}
+                          </span>
                           <span className="opacity-50 ml-1 text-xs">({report.reporter_role})</span>
                         </p>
                       </div>
-                      
+
                       <div className="flex gap-2">
                         {report.status !== 'RESUELTO' && report.status !== 'RECHAZADO' && (
                           <>
-                            <button 
+                            <button
                               disabled={!!updatingReportId}
                               onClick={() => handleStatusUpdate(report.id, 'RECHAZADO')}
                               className="px-3 py-2 text-[10px] font-black uppercase bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 cursor-pointer"
                             >
                               Rechazar
                             </button>
-                            <button 
+                            <button
                               disabled={!!updatingReportId}
                               onClick={() => handleStatusUpdate(report.id, 'RESUELTO')}
                               className="px-3 py-2 text-[10px] font-black uppercase bg-[var(--ws-midnight)] text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
@@ -289,10 +403,13 @@ export default function AdminReportsTable({ initialReports }: Props) {
                           {'★'.repeat(report.review.rating || 0)}
                         </div>
                         <p className="text-sm text-[var(--ws-midnight)] font-bold mb-1">
-                          De {report.review.author.name || 'Anónimo'} a {report.review.recipient.name || 'Anónimo'}
+                          De{' '}
+                          {highlightText(report.review.author.name || 'Anónimo', searchQuery)}
+                          {' '}a{' '}
+                          {highlightText(report.review.recipient.name || 'Anónimo', searchQuery)}
                         </p>
                         <p className="text-sm text-[var(--ws-midnight)]">
-                          "{report.review.comment || 'Sin comentario.'}"
+                          &ldquo;{report.review.comment || 'Sin comentario.'}&rdquo;
                         </p>
                       </div>
                     </div>

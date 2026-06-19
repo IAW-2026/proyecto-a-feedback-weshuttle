@@ -4,6 +4,7 @@ import Navbar from "@/app/components/NavBar"
 import { getCurrentUser } from "@/lib/current-user"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { Suspense } from "react"
 
 export default async function AdminReportsPage() {
   // 1. Verificación de seguridad en el servidor
@@ -43,7 +44,9 @@ export default async function AdminReportsPage() {
           </Link>
         </section>
 
-        <AdminReportsTable initialReports={reports as any} />
+        <Suspense fallback={<div className="text-sm text-[var(--ws-slate)] animate-pulse">Cargando reportes...</div>}>
+          <AdminReportsTable initialReports={reports as any} />
+        </Suspense>
       </main>
     </div>
   )

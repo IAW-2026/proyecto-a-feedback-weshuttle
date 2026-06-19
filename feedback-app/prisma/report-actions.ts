@@ -65,7 +65,19 @@ export async function getAdminReports() {
         createdAt: 'desc',
       },
     })
-    return reports
+
+    // Batch-fetch reporter names (reporter_user_id is not a FK relation in schema)
+    const reporterIds = [...new Set(reports.map((r: { reporter_user_id: string }) => r.reporter_user_id))]
+    const reporters = await prisma.user.findMany({
+      where: { id: { in: reporterIds } },
+      select: { id: true, name: true },
+    })
+    const reporterMap = Object.fromEntries(reporters.map((u: { id: string; name: string | null }) => [u.id, u.name]))
+
+    return reports.map((r: typeof reports[number]) => ({
+      ...r,
+      reporter_name: reporterMap[r.reporter_user_id] ?? null,
+    }))
   } catch (error) {
     console.error('Error fetching reports:', error)
     return []

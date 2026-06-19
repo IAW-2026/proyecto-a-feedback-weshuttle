@@ -1,9 +1,36 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { CreateAdminReviewInput, CreatedAdminReview } from "@/lib/reviews/admin-create-review"
 import ActionModal from './ActionModal'
 import Toast from "./Toast"
+import { useRouter, useSearchParams } from "next/navigation"
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+function highlightText(text: string | null, search: string) {
+  if (!text) return "—"
+  if (!search.trim()) return text
+
+  const regex = new RegExp(`(${escapeRegExp(search)})`, "gi")
+  const parts = text.split(regex)
+
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark key={i} className="bg-[var(--ws-success-soft)] text-[var(--ws-success)] font-semibold rounded-[2px] px-0.5">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  )
+}
 
 type User = {
   id: string
@@ -167,7 +194,33 @@ type Props = {
 }
 
 export default function AdminReviewsTable({ initialReviews, createReviewAction }: Props) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const searchQuery = searchParams.get("search") || ""
+  const pageParam = searchParams.get("page") || "1"
+
   const [reviews, setReviews] = useState<Review[]>(initialReviews as Review[])
+  const [searchInput, setSearchInput] = useState(searchQuery)
+
+  useEffect(() => {
+    setSearchInput(searchQuery)
+  }, [searchQuery])
+
+  const handleSearchChange = (val: string) => {
+    setSearchInput(val)
+
+    const params = new URLSearchParams(window.location.search)
+    if (val.trim()) {
+      params.set("search", val)
+    } else {
+      params.delete("search")
+    }
+    params.set("page", "1")
+
+    router.replace(`?${params.toString()}`)
+  }
+
   const [modalOpen, setModalOpen] = useState(false)
   const [selected, setSelected] = useState<Review | null>(null)
   const [editRating, setEditRating] = useState<number | null>(null)
@@ -349,11 +402,42 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
 
   const toggleExpand = (poolId: string) => setExpanded((s) => ({ ...s, [poolId]: !s[poolId] }))
 
-  const grouped = groupReviewsByTrip(reviews)
+  const allGrouped = groupReviewsByTrip(reviews).map((trip, idx, arr) => ({
+    ...trip,
+    displayNumber: arr.length - idx
+  }))
+
+  const grouped = allGrouped.filter((trip) => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+
+    // Check if driver matches
+    const driverMatch = trip.driver?.name?.toLowerCase().includes(q) || trip.driver?.id?.toLowerCase().includes(q)
+    if (driverMatch) return true
+
+    // Check if any passenger matches
+    const passengerMatch = trip.passengers.some(
+      (p) => p.name?.toLowerCase().includes(q) || p.id?.toLowerCase().includes(q)
+    )
+    if (passengerMatch) return true
+
+    // Check if any review author/recipient matches
+    const reviewMatch = trip.reviews.some((r) => {
+      const authorName = (r.author?.name || r.author_user_id || "").toLowerCase()
+      const recipientName = (r.recipient?.name || r.target_user_id || "").toLowerCase()
+      return authorName.includes(q) || recipientName.includes(q)
+    })
+    return reviewMatch
+  })
+
+  const ITEMS_PER_PAGE = 5
+  const totalPages = Math.ceil(grouped.length / ITEMS_PER_PAGE)
+  const currentPage = Math.min(Math.max(Number(pageParam) || 1, 1), totalPages || 1)
+  const paginatedTrips = grouped.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
   return (
     <>
-      <Toast 
+      <Toast
         isVisible={toast.show}
         message={toast.msg}
         type={toast.type}
@@ -370,20 +454,40 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
       />
 
       <div className="space-y-4 admin-crud-table">
-        {grouped.length === 0 ? (
-          <div className="text-sm text-[var(--ws-slate)]">No hay reseñas para mostrar.</div>
+        {/* SEARCH BAR */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div className="relative flex-1 max-w-md">
+            <input
+              type="text"
+              placeholder="Buscar por nombre de autor o reseñado..."
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="ws-input pl-10 pr-4 py-2 text-sm"
+            />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {paginatedTrips.length === 0 ? (
+          <div className="text-sm text-[var(--ws-slate)]">No se encontraron reseñas que coincidan con la búsqueda.</div>
         ) : (
-          grouped.map((trip, idx) => {
+          paginatedTrips.map((trip, idx) => {
             const average = (
               trip.reviews.reduce((a, b) => a + (b.rating || 0), 0) / trip.reviews.length
             ).toFixed(1)
+
+            const absoluteIdx = (currentPage - 1) * ITEMS_PER_PAGE + idx
 
             return (
               <div key={trip.poolId} className="ws-card ws-card-large">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex items-center gap-3 mb-1">
-                      <span className="ws-pill ws-pill-info uppercase tracking-wider">Viaje #{grouped.length - idx}</span>
+                      <span className="ws-pill ws-pill-info uppercase tracking-wider">Viaje #{trip.displayNumber}</span>
                       <p className="text-sm text-[var(--ws-slate)]">Pool ID: {trip.poolId}</p>
                     </div>
 
@@ -452,8 +556,8 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
                         {trip.reviews.map((r) => (
                           <tr key={r.id} className="border-t last:border-b">
                             <td className="p-2 align-top text-sm">{new Date(r.createdAt).toLocaleString()}</td>
-                            <td className="p-2 align-top text-sm">{r.author?.name || r.author_user_id}</td>
-                            <td className="p-2 align-top text-sm">{r.recipient?.name || r.target_user_id || "—"}</td>
+                            <td className="p-2 align-top text-sm">{highlightText(r.author?.name || r.author_user_id, searchQuery)}</td>
+                            <td className="p-2 align-top text-sm">{highlightText(r.recipient?.name || r.target_user_id, searchQuery)}</td>
                             <td className="p-2 align-top text-sm">{r.author_role} → {r.recipient_role || "—"}</td>
                             <td className="p-2 align-top text-sm">{r.status}</td>
                             <td className="p-2 align-top text-sm">{r.rating ?? "—"}</td>
@@ -497,6 +601,41 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
               </div>
             )
           })
+        )}
+
+        {/* PAGINATION CONTROLS */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-[var(--ws-outline)] pt-6 mt-6">
+            <div className="text-sm text-[var(--ws-slate)]">
+              Mostrando página <span className="font-semibold text-[var(--ws-midnight)]">{currentPage}</span> de <span className="font-semibold text-[var(--ws-midnight)]">{totalPages}</span> ({grouped.length} viajes en total)
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => {
+                  const params = new URLSearchParams(window.location.search)
+                  params.set("page", String(currentPage - 1))
+                  router.replace(`?${params.toString()}`)
+                }}
+                className="px-4 py-2 border border-[var(--ws-outline)] rounded-lg text-sm font-bold text-[var(--ws-midnight)] bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => {
+                  const params = new URLSearchParams(window.location.search)
+                  params.set("page", String(currentPage + 1))
+                  router.replace(`?${params.toString()}`)
+                }}
+                className="px-4 py-2 border border-[var(--ws-outline)] rounded-lg text-sm font-bold text-[var(--ws-midnight)] bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

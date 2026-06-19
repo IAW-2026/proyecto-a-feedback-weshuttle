@@ -7,6 +7,7 @@ import AdminReviewsTable from "../../components/AdminReviewsTable"
 import { Prisma } from "@prisma/client"
 import ProfileNameEditor from "../../components/ProfileNameEditor"
 import { createAdminReview, type CreateAdminReviewInput } from "@/lib/reviews/admin-create-review"
+import { Suspense } from "react"
 
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
   include: { author: true; recipient: true }
@@ -132,7 +133,9 @@ export default async function AdminDashboard() {
           <div className="ws-card ws-card-large w-full">
             <h3 className="text-xl font-black mb-4">Listado de reseñas</h3>
             <div className="w-full">
-              <AdminReviewsTable initialReviews={reviews} createReviewAction={createAdminReviewAction} />
+              <Suspense fallback={<div className="text-sm text-[var(--ws-slate)] animate-pulse">Cargando reseñas...</div>}>
+                <AdminReviewsTable initialReviews={reviews} createReviewAction={createAdminReviewAction} />
+              </Suspense>
             </div>
           </div>
         </section>
