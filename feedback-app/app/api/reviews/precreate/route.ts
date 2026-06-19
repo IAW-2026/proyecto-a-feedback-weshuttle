@@ -44,76 +44,148 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'BAD_REQUEST', message: 'Missing required fields' }, { status: 400 });
     }
 
-    // 1. Mockear la llamada a la Rider App para obtener pasajeros pagados
-    // En la Etapa 3, aquí harías un fetch real:
-    // const riderAppResponse = await fetch(`${process.env.RIDER_APP_API_URL}/api/pools/${pool_id}/passengers?status=PAID`);
-    // const riderAppData: MockRiderAppPassengersResponse = await riderAppResponse.json();
+    // 1. Obtener los pasajeros pagados de la Rider App o usar el mock
+    let riderAppData: MockRiderAppPassengersResponse;
+    const useMock = process.env.USE_MOCK_PASSENGERS === 'true' || !process.env.RIDER_APP_API_URL;
 
-    // Datos mockeados para simular la respuesta de la Rider App
-    // ETAPA 3: Aquí es donde cambiaré este objeto por el fetch real.
-    const mockRiderAppData: MockRiderAppPassengersResponse = {
-      pool_id: pool_id,
-      passengers: [
-        {
-          reservation_id: 'res_101',
-          // Usando el ID de rider+clerk_test proporcionado para testing
-          passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P', 
-          passenger_name: 'Pasajero (Usuario de Clerk)',
-          reservation_status: 'PAID',
-          pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
-          destination_id: 'dest_polo_petroquimico',
-          departure_time: '2026-06-10T08:00:00Z',
-          max_price: 5000,
-          effective_price: 3800,
-        },
-        {
-          reservation_id: 'res_102',
-          passenger_user_id: 'user_rider_002',
-          passenger_name: 'Pasajero de Prueba 2',
-          reservation_status: 'PAID',
-          pickup_point: { address: 'Sarmiento 850', lat: -38.713, lng: -62.261 },
-          destination_id: 'dest_polo_petroquimico',
-          departure_time: '2026-06-10T08:00:00Z',
-          max_price: 5000,
-          effective_price: 3800,
-        },
-        {
-          reservation_id: 'res_103',
-          passenger_user_id: 'user_rider_001',
-          passenger_name: 'Pasajero de Prueba 3',
-          reservation_status: 'PAID',
-          pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
-          destination_id: 'dest_polo_petroquimico',
-          departure_time: '2026-06-10T08:00:00Z',
-          max_price: 5000,
-          effective_price: 3800,
-        },
-        {
-          reservation_id: 'res_104',
-          passenger_user_id: 'user_rider_004', 
-          passenger_name: 'Pasajero de Prueba 4',
-          reservation_status: 'PAID',
-          pickup_point: { address: 'Sarmiento 900', lat: -38.703, lng: -62.201 },
-          destination_id: 'dest_polo_petroquimico',
-          departure_time: '2026-06-10T08:00:00Z',
-          max_price: 5000,
-          effective_price: 3800,
-        },
-        {
-          reservation_id: 'res_105',
-          passenger_user_id: 'user_rider_005',
-          passenger_name: 'Pasajero de Prueba 5',
-          reservation_status: 'PAID',
-          pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
-          destination_id: 'dest_polo_petroquimico',
-          departure_time: '2026-06-10T08:00:00Z',
-          max_price: 5000,
-          effective_price: 3800,
+    if (!useMock) {
+      try {
+        const url = `${process.env.RIDER_APP_API_URL}/api/pools/${pool_id}/passengers?status=PAID`;
+        console.log(`Fetching real passenger list from: ${url}`);
+        const riderAppResponse = await fetch(url);
+        if (!riderAppResponse.ok) {
+          throw new Error(`Rider App responded with status: ${riderAppResponse.status}`);
         }
-      ],
-    };
+        riderAppData = await riderAppResponse.json();
+      } catch (error) {
+        console.error("Failed to fetch passenger list from Rider App, falling back to mock:", error);
+        // Fallback al mock por resiliencia si la conexión falla
+        riderAppData = {
+          pool_id: pool_id,
+          passengers: [
+            {
+              reservation_id: 'res_101',
+              passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P', 
+              passenger_name: 'Pasajero (Usuario de Clerk)',
+              reservation_status: 'PAID',
+              pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
+              destination_id: 'dest_polo_petroquimico',
+              departure_time: '2026-06-10T08:00:00Z',
+              max_price: 5000,
+              effective_price: 3800,
+            },
+            {
+              reservation_id: 'res_102',
+              passenger_user_id: 'user_rider_002',
+              passenger_name: 'Pasajero de Prueba 2',
+              reservation_status: 'PAID',
+              pickup_point: { address: 'Sarmiento 850', lat: -38.713, lng: -62.261 },
+              destination_id: 'dest_polo_petroquimico',
+              departure_time: '2026-06-10T08:00:00Z',
+              max_price: 5000,
+              effective_price: 3800,
+            },
+            {
+              reservation_id: 'res_103',
+              passenger_user_id: 'user_rider_001',
+              passenger_name: 'Pasajero de Prueba 3',
+              reservation_status: 'PAID',
+              pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
+              destination_id: 'dest_polo_petroquimico',
+              departure_time: '2026-06-10T08:00:00Z',
+              max_price: 5000,
+              effective_price: 3800,
+            },
+            {
+              reservation_id: 'res_104',
+              passenger_user_id: 'user_rider_004', 
+              passenger_name: 'Pasajero de Prueba 4',
+              reservation_status: 'PAID',
+              pickup_point: { address: 'Sarmiento 900', lat: -38.703, lng: -62.201 },
+              destination_id: 'dest_polo_petroquimico',
+              departure_time: '2026-06-10T08:00:00Z',
+              max_price: 5000,
+              effective_price: 3800,
+            },
+            {
+              reservation_id: 'res_105',
+              passenger_user_id: 'user_rider_005',
+              passenger_name: 'Pasajero de Prueba 5',
+              reservation_status: 'PAID',
+              pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
+              destination_id: 'dest_polo_petroquimico',
+              departure_time: '2026-06-10T08:00:00Z',
+              max_price: 5000,
+              effective_price: 3800,
+            }
+          ],
+        };
+      }
+    } else {
+      // Usar datos mockeados directamente
+      riderAppData = {
+        pool_id: pool_id,
+        passengers: [
+          {
+            reservation_id: 'res_101',
+            passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P', 
+            passenger_name: 'Pasajero (Usuario de Clerk)',
+            reservation_status: 'PAID',
+            pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
+            destination_id: 'dest_polo_petroquimico',
+            departure_time: '2026-06-10T08:00:00Z',
+            max_price: 5000,
+            effective_price: 3800,
+          },
+          {
+            reservation_id: 'res_102',
+            passenger_user_id: 'user_rider_002',
+            passenger_name: 'Pasajero de Prueba 2',
+            reservation_status: 'PAID',
+            pickup_point: { address: 'Sarmiento 850', lat: -38.713, lng: -62.261 },
+            destination_id: 'dest_polo_petroquimico',
+            departure_time: '2026-06-10T08:00:00Z',
+            max_price: 5000,
+            effective_price: 3800,
+          },
+          {
+            reservation_id: 'res_103',
+            passenger_user_id: 'user_rider_001',
+            passenger_name: 'Pasajero de Prueba 3',
+            reservation_status: 'PAID',
+            pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
+            destination_id: 'dest_polo_petroquimico',
+            departure_time: '2026-06-10T08:00:00Z',
+            max_price: 5000,
+            effective_price: 3800,
+          },
+          {
+            reservation_id: 'res_104',
+            passenger_user_id: 'user_rider_004', 
+            passenger_name: 'Pasajero de Prueba 4',
+            reservation_status: 'PAID',
+            pickup_point: { address: 'Sarmiento 900', lat: -38.703, lng: -62.201 },
+            destination_id: 'dest_polo_petroquimico',
+            departure_time: '2026-06-10T08:00:00Z',
+            max_price: 5000,
+            effective_price: 3800,
+          },
+          {
+            reservation_id: 'res_105',
+            passenger_user_id: 'user_rider_005',
+            passenger_name: 'Pasajero de Prueba 5',
+            reservation_status: 'PAID',
+            pickup_point: { address: 'Sarmiento 800', lat: -38.703, lng: -62.201 },
+            destination_id: 'dest_polo_petroquimico',
+            departure_time: '2026-06-10T08:00:00Z',
+            max_price: 5000,
+            effective_price: 3800,
+          }
+        ],
+      };
+    }
 
-    const paidPassengers = mockRiderAppData.passengers.filter(p => p.reservation_status === 'PAID');
+    const paidPassengers = riderAppData.passengers.filter(p => p.reservation_status === 'PAID');
     let createdReviewsCount = 0;
 
     // CAPTURA: Asegurar que el conductor existe y actualizar su nombre si viene en el request
