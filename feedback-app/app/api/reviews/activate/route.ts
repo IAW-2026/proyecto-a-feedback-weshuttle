@@ -76,6 +76,77 @@ export async function POST(req: Request) {
       },
     })
 
+    // 1. Obtener el conductor del pool
+    const poolDriverReview = await prisma.review.findFirst({
+      where: {
+        pool_id: body.pool_id,
+        author_role: "driver",
+      },
+      select: {
+        author_user_id: true,
+      },
+    })
+
+    // 2. Obtener pasajeros del pool
+    const passengerReviews = await prisma.review.findMany({
+      where: {
+        pool_id: body.pool_id,
+        author_role: "rider",
+      },
+      select: {
+        author_user_id: true,
+      },
+      distinct: ["author_user_id"],
+    })
+
+    // 3. Notificar a cada pasajero (Rider App)
+    const riderAppUrl = process.env.RIDER_APP_API_URL || process.env.NEXT_PUBLIC_RIDER_APP_URL;
+    if (riderAppUrl && passengerReviews.length > 0) {
+      for (const p of passengerReviews) {
+        try {
+          const url = `${riderAppUrl}/api/notifications/feedback`;
+          console.log(`Sending notification to Rider App: ${url} for passenger ${p.author_user_id}`);
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pool_id: body.pool_id,
+              passenger_user_id: p.author_user_id,
+              message: "Ya podés calificar tu viaje."
+            }),
+          });
+          if (!res.ok) {
+            console.error(`Failed to send notification to Rider App for passenger ${p.author_user_id}: ${res.status}`);
+          }
+        } catch (err) {
+          console.error(`Error notifying passenger ${p.author_user_id}:`, err);
+        }
+      }
+    }
+
+    // 4. Notificar al conductor (Driver App)
+    const driverAppUrl = process.env.DRIVER_APP_API_URL || process.env.NEXT_PUBLIC_DRIVER_APP_URL;
+    if (driverAppUrl && poolDriverReview) {
+      try {
+        const url = `${driverAppUrl}/api/notifications/feedback`;
+        console.log(`Sending notification to Driver App: ${url} for driver ${poolDriverReview.author_user_id}`);
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pool_id: body.pool_id,
+            driver_user_id: poolDriverReview.author_user_id,
+            message: "Ya podés calificar a los pasajeros del viaje."
+          }),
+        });
+        if (!res.ok) {
+          console.error(`Failed to send notification to Driver App: ${res.status}`);
+        }
+      } catch (err) {
+        console.error("Error notifying driver:", err);
+      }
+    }
+
     return NextResponse.json({
       pool_id: body.pool_id,
       activated_reviews: result.count,
