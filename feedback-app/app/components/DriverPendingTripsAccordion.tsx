@@ -7,6 +7,7 @@ type PendingReviewItem = {
 	id: string
 	recipientName: string | null
 	createdAt: string
+	status: string
 }
 
 type PendingTripGroup = {
@@ -161,9 +162,15 @@ export default function DriverPendingTripsAccordion({ trips }: Props) {
 													</h3>
 												</div>
 
-												<div className="ws-pill ws-pill-warning shrink-0">
-													Pending
-												</div>
+												{review.status === "PRECREATED" ? (
+													<div className="ws-pill ws-pill-info shrink-0">
+														Precreated
+													</div>
+												) : (
+													<div className="ws-pill ws-pill-warning shrink-0">
+														Pending
+													</div>
+												)}
 											</div>
 
 											<CompleteReviewForm reviewId={review.id} poolId={trip.poolId} />

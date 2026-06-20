@@ -103,23 +103,31 @@ export async function POST(req: Request) {
     const riderAppUrl = process.env.RIDER_APP_API_URL || process.env.NEXT_PUBLIC_RIDER_APP_URL;
     if (riderAppUrl && passengerReviews.length > 0) {
       for (const p of passengerReviews) {
-        try {
-          const url = `${riderAppUrl}/api/notifications/feedback`;
-          console.log(`Sending notification to Rider App: ${url} for passenger ${p.author_user_id}`);
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              pool_id: body.pool_id,
-              passenger_user_id: p.author_user_id,
-              message: "Ya podés calificar tu viaje."
-            }),
-          });
-          if (!res.ok) {
-            console.error(`Failed to send notification to Rider App for passenger ${p.author_user_id}: ${res.status}`);
+        // Notificar tanto al ID del mock como al del desarrollador si corresponde
+        const idsToNotify = [p.author_user_id]
+        if (p.author_user_id === "user_3EYGQCDMhqZaMRhMIgYvm46DK1P") {
+          idsToNotify.push("user_3Db8E5HISehCv1nAJkIwlHXxtiG")
+        }
+
+        for (const targetId of idsToNotify) {
+          try {
+            const url = `${riderAppUrl}/api/notifications/feedback`;
+            console.log(`Sending notification to Rider App: ${url} for passenger ${targetId}`);
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                pool_id: body.pool_id,
+                passenger_user_id: targetId,
+                message: "Ya podés calificar tu viaje."
+              }),
+            });
+            if (!res.ok) {
+              console.error(`Failed to send notification to Rider App for passenger ${targetId}: ${res.status}`);
+            }
+          } catch (err) {
+            console.error(`Error notifying passenger ${targetId}:`, err);
           }
-        } catch (err) {
-          console.error(`Error notifying passenger ${p.author_user_id}:`, err);
         }
       }
     }

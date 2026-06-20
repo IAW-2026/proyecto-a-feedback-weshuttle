@@ -265,9 +265,15 @@ export default async function PassengerDashboard() {
 
                           </div>
 
-                          <div className="ws-pill ws-pill-warning">
-                            Pending
-                          </div>
+                          {review.status === "PRECREATED" ? (
+                            <div className="ws-pill ws-pill-info">
+                              Precreated
+                            </div>
+                          ) : (
+                            <div className="ws-pill ws-pill-warning">
+                              Pending
+                            </div>
+                          )}
 
                         </div>
 

@@ -173,8 +173,8 @@ body {
   }
 
   .ws-pill-info {
-    background: var(--ws-info-soft);
-    color: var(--ws-midnight);
+    background: #dbeafe; /* Soft blue */
+    color: #1e40af;      /* Dark blue */
   }
 
   .ws-nav-link {

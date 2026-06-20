@@ -30,6 +30,7 @@ type PendingTripAccordionGroup = {
     id: string
     recipientName: string | null
     createdAt: string
+    status: string
   }[]
 }
 
@@ -161,6 +162,7 @@ export default async function DriverDashboard() {
         id: review.id,
         recipientName: review.recipient.name,
         createdAt: review.createdAt.toISOString(),
+        status: review.status,
       })),
     }
   })

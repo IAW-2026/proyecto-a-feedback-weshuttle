@@ -74,23 +74,31 @@ export async function checkAndActivatePoolsAction(userId: string): Promise<{ suc
             const riderAppUrl = process.env.RIDER_APP_API_URL || process.env.NEXT_PUBLIC_RIDER_APP_URL
             if (riderAppUrl && passengerReviews.length > 0) {
               for (const p of passengerReviews) {
-                try {
-                  const notifyUrl = `${riderAppUrl}/api/notifications/feedback`
-                  console.log(`[AutoActivator] Notifying passenger ${p.author_user_id} at ${notifyUrl}`)
-                  const response = await fetch(notifyUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      pool_id: poolId,
-                      passenger_user_id: p.author_user_id,
-                      message: "Ya podés calificar tu viaje."
+                // Notificar tanto al ID del mock como al del desarrollador si corresponde
+                const idsToNotify = [p.author_user_id]
+                if (p.author_user_id === "user_3EYGQCDMhqZaMRhMIgYvm46DK1P") {
+                  idsToNotify.push("user_3Db8E5HISehCv1nAJkIwlHXxtiG")
+                }
+
+                for (const targetId of idsToNotify) {
+                  try {
+                    const notifyUrl = `${riderAppUrl}/api/notifications/feedback`
+                    console.log(`[AutoActivator] Notifying passenger ${targetId} at ${notifyUrl}`)
+                    const response = await fetch(notifyUrl, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        pool_id: poolId,
+                        passenger_user_id: targetId,
+                        message: "Ya podés calificar tu viaje."
+                      })
                     })
-                  })
-                  if (!response.ok) {
-                    console.error(`[AutoActivator] Failed to notify passenger ${p.author_user_id}: ${response.status}`)
+                    if (!response.ok) {
+                      console.error(`[AutoActivator] Failed to notify passenger ${targetId}: ${response.status}`)
+                    }
+                  } catch (err) {
+                    console.error(`[AutoActivator] Error notifying passenger ${targetId}:`, err)
                   }
-                } catch (err) {
-                  console.error(`[AutoActivator] Error notifying passenger ${p.author_user_id}:`, err)
                 }
               }
             }
