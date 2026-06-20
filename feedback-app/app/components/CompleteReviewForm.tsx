@@ -6,8 +6,10 @@ import Toast from "./Toast"
 
 export default function CompleteReviewForm({
   reviewId,
+  poolId,
 }: {
   reviewId: string
+  poolId?: string
 }) {
 
   const [comment, setComment] = useState("")
@@ -75,6 +77,17 @@ export default function CompleteReviewForm({
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
+
+        {poolId && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[var(--ws-slate)] uppercase tracking-wider">
+              Pool ID:
+            </span>
+            <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-[4px] select-all border border-slate-200">
+              {poolId}
+            </span>
+          </div>
+        )}
 
         <div>
 

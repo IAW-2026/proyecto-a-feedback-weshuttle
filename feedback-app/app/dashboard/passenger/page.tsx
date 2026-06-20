@@ -265,7 +265,7 @@ export default async function PassengerDashboard() {
                         Tu viaje está esperando feedback. Evaluá tu experiencia y ayudá a mejorar futuros viajes.
                       </p>
 
-                      <CompleteReviewForm reviewId={review.id} />
+                      <CompleteReviewForm reviewId={review.id} poolId={review.pool_id} />
 
                     </div>
 
