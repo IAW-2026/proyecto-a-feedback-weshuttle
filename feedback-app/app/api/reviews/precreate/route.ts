@@ -23,6 +23,7 @@ interface MockRiderAppPassengersResponse {
     passenger_user_id: string;
     passenger_name: string;
     reservation_status: string; // "PAID"
+    payment_status?: string;
     pickup_point: {
       address: string;
       lat: number;
@@ -189,7 +190,7 @@ export async function POST(req: Request) {
       };
     }
 
-    const paidPassengers = riderAppData.passengers.filter(p => p.reservation_status === 'PAID');
+    const paidPassengers = riderAppData.passengers.filter(p => p.payment_status === 'PAID' || p.reservation_status === 'PAID');
     let createdReviewsCount = 0;
 
     // CAPTURA: Asegurar que el conductor existe y actualizar su nombre si viene en el request
