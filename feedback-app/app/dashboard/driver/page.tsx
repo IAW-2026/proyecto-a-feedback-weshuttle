@@ -8,6 +8,8 @@ import DriverPendingTripsAccordion from "../../components/DriverPendingTripsAcco
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
 import { getPoolDetailsMap } from "../../../lib/pools"
+import AutoReviewActivator from "../../components/AutoReviewActivator"
+import { checkAndActivatePoolsAction } from "../../actions/reviews"
 
 // Definimos el tipo exacto que devuelve Prisma incluyendo las relaciones
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
@@ -120,6 +122,9 @@ export default async function DriverDashboard() {
     redirect("/dashboard/passenger")
   }
 
+  // Activar reseñas si algún viaje del usuario pasó a estar completado
+  await checkAndActivatePoolsAction(user.id)
+
   const activePoolId = await getLatestDriverSimulationPoolId(user.id)
 
   const [reviews, precreatedReviewsCount] = await Promise.all([
@@ -174,6 +179,8 @@ export default async function DriverDashboard() {
 
   return (
     <div className="ws-page">
+
+      <AutoReviewActivator userId={user.id} />
 
       <Navbar role={user.role} displayName={user.name ?? "Conductor"} />
 

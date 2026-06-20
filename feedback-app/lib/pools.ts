@@ -36,11 +36,14 @@ export async function getPoolDetailsMap(poolIds: string[]): Promise<Record<strin
             departureTime: new Date(data.departure_time),
           };
         } else {
-          throw new Error(`HTTP error ${res.status}`);
+          console.warn(`Pool ${poolId} not found in Driver App (Status ${res.status}). Using fallback.`);
+          details[poolId] = {
+            destinationName: 'Polo Petroquímico (Simulado)',
+            departureTime: new Date(),
+          };
         }
       } catch (error) {
         console.error(`Failed to fetch pool details for ${poolId}:`, error);
-        // Fallback to a mock/simulated date and destination to keep development resilient
         details[poolId] = {
           destinationName: 'Polo Petroquímico (Simulado)',
           departureTime: new Date(),

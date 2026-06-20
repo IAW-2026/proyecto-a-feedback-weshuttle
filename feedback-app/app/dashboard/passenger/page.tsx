@@ -6,6 +6,8 @@ import { getCurrentUser } from "@/lib/current-user"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
 import { getPoolDetailsMap } from "../../../lib/pools"
+import AutoReviewActivator from "../../components/AutoReviewActivator"
+import { checkAndActivatePoolsAction } from "../../actions/reviews"
 
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
   include: { author: true; recipient: true }
@@ -69,6 +71,9 @@ export default async function PassengerDashboard() {
     redirect("/dashboard/driver")
   }
 
+  // Activar reseñas si algún viaje del usuario pasó a estar completado
+  await checkAndActivatePoolsAction(user.id)
+
   const reviews = await getReviews(user.id)
   const poolDetails = await getPoolDetailsMap(reviews.map((r) => r.pool_id))
 
@@ -98,6 +103,8 @@ export default async function PassengerDashboard() {
 
   return (
     <div className="ws-page">
+
+      <AutoReviewActivator userId={user.id} />
 
       <Navbar role={user.role} displayName={user.name ?? "Pasajero"} />
 
