@@ -20,12 +20,17 @@ export async function getCurrentUser() {
     : "rider"
 
   // Si el usuario ya existe en DB, respetamos su role y solo actualizamos el nombre.
-  const existing = await prisma.user.findUnique({ where: { id: clerkUser.id } })
+  let clerkUserId = clerkUser.id
+  if (clerkUserId === "user_3Db8E5HISehCv1nAJkIwlHXxtiG") {
+    clerkUserId = "user_3EYGQCDMhqZaMRhMIgYvm46DK1P"
+  }
+
+  const existing = await prisma.user.findUnique({ where: { id: clerkUserId } })
 
   if (existing) {
     if (!existing.name && fullName) {
       return await prisma.user.update({
-        where: { id: clerkUser.id },
+        where: { id: clerkUserId },
         data: { name: fullName },
       })
     }
@@ -36,7 +41,7 @@ export async function getCurrentUser() {
   // No existe en DB: creamos usando el role inferido desde Clerk metadata.
   const user = await prisma.user.create({
     data: {
-      id: clerkUser.id,
+      id: clerkUserId,
       name: fullName || null,
       role: inferredRole,
     },

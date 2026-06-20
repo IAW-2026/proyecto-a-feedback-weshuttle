@@ -45,8 +45,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'BAD_REQUEST', message: 'Missing required fields' }, { status: 400 });
     }
 
-    // Sobrescribimos con el conductor de prueba de Clerk configurado para testing
-    const driver_user_id = 'user_3EYGtdZpi4fPlmXGq4EKEa1onL0';
+    // Usamos el conductor real enviado por el POST de la Driver App
+    const driver_user_id = incomingDriverId;
     const driver_name = incomingDriverName || 'Conductor de Prueba (Clerk)';
 
     // 1. Obtener los pasajeros pagados de la Rider App o usar el mock
@@ -219,15 +219,23 @@ export async function POST(req: Request) {
 
     // 2. Pre-crear reseñas para cada pasajero pagado
     for (const passenger of paidPassengers) {
+      // Mapeamos el ID de Franco Gulino (real de Clerk) al ID de pasajero de prueba del mock
+      let passengerId = passenger.passenger_user_id;
+      let passengerName = passenger.passenger_name;
+      if (passengerId === 'user_3Db8E5HISehCv1nAJkIwlHXxtiG') {
+        passengerId = 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P';
+        passengerName = 'Pasajero (Usuario de Clerk)';
+      }
+
       // Asegurar que el pasajero existe en nuestra base de datos local
       await prisma.user.upsert({
-        where: { id: passenger.passenger_user_id },
+        where: { id: passengerId },
         update: { 
-          name: passenger.passenger_name 
+          name: passengerName 
         },
         create: {
-          id: passenger.passenger_user_id,
-          name: passenger.passenger_name,
+          id: passengerId,
+          name: passengerName,
           role: 'rider',
         },
       });
@@ -237,7 +245,7 @@ export async function POST(req: Request) {
         data: {
           pool_id,
           reservation_id: passenger.reservation_id,
-          author_user_id: passenger.passenger_user_id,
+          author_user_id: passengerId,
           author_role: 'rider',
           target_user_id: driver_user_id,
           target_role: 'driver',
@@ -254,7 +262,7 @@ export async function POST(req: Request) {
           reservation_id: passenger.reservation_id,
           author_user_id: driver_user_id,
           author_role: 'driver',
-          target_user_id: passenger.passenger_user_id,
+          target_user_id: passengerId,
           target_role: 'rider',
           status: "PRECREATED",
           enabled_at: new Date(),

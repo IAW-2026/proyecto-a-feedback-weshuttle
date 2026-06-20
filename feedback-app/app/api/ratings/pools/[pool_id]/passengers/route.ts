@@ -54,11 +54,18 @@ export async function GET(
     const uniquePassengers: { passenger_user_id: string; passenger_name: string }[] = [];
     const seen = new Set<string>();
     for (const p of passengers) {
-      if (!seen.has(p.passenger_user_id)) {
-        seen.add(p.passenger_user_id);
+      let passengerId = p.passenger_user_id;
+      let passengerName = p.passenger_name;
+      if (passengerId === 'user_3Db8E5HISehCv1nAJkIwlHXxtiG') {
+        passengerId = 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P';
+        passengerName = 'Pasajero (Usuario de Clerk)';
+      }
+
+      if (!seen.has(passengerId)) {
+        seen.add(passengerId);
         uniquePassengers.push({
-          passenger_user_id: p.passenger_user_id,
-          passenger_name: p.passenger_name
+          passenger_user_id: passengerId,
+          passenger_name: passengerName
         });
       }
     }
