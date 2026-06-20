@@ -12,6 +12,7 @@ type PendingReviewItem = {
 type PendingTripGroup = {
 	poolId: string
 	date: string
+	destinationName?: string
 	reviews: PendingReviewItem[]
 }
 
@@ -61,7 +62,7 @@ export default function DriverPendingTripsAccordion({ trips }: Props) {
 						>
 							<div>
 								<p className="text-xs font-bold text-[var(--ws-slate)] uppercase tracking-widest mb-2">
-									Viaje
+									Viaje a: <span className="text-[var(--ws-midnight)] normal-case font-bold">{trip.destinationName || "Polo Petroquímico"}</span>
 								</p>
 								<p className="text-2xl font-black tracking-tight text-[var(--ws-midnight)] leading-tight">
 									{new Intl.DateTimeFormat("es-AR", {

@@ -7,6 +7,7 @@ import DriverSimulationControls from "../../components/DriverSimulationControls"
 import DriverPendingTripsAccordion from "../../components/DriverPendingTripsAccordion"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
+import { getPoolDetailsMap } from "../../../lib/pools"
 
 // Definimos el tipo exacto que devuelve Prisma incluyendo las relaciones
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
@@ -22,6 +23,7 @@ type GroupedPendingTrip = {
 type PendingTripAccordionGroup = {
   poolId: string
   date: string
+  destinationName?: string
   reviews: {
     id: string
     recipientName: string | null
@@ -142,15 +144,21 @@ export default async function DriverDashboard() {
 
   const groupedPending = groupPendingByTrip(pendingReviews);
 
-  const pendingTripAccordionGroups: PendingTripAccordionGroup[] = groupedPending.map((group) => ({
-    poolId: group.poolId,
-    date: group.date.toISOString(),
-    reviews: group.reviews.map((review) => ({
-      id: review.id,
-      recipientName: review.recipient.name,
-      createdAt: review.createdAt.toISOString(),
-    })),
-  }))
+  const poolDetails = await getPoolDetailsMap(reviews.map((r) => r.pool_id))
+
+  const pendingTripAccordionGroups: PendingTripAccordionGroup[] = groupedPending.map((group) => {
+    const poolInfo = poolDetails[group.poolId]
+    return {
+      poolId: group.poolId,
+      date: group.date.toISOString(),
+      destinationName: poolInfo?.destinationName,
+      reviews: group.reviews.map((review) => ({
+        id: review.id,
+        recipientName: review.recipient.name,
+        createdAt: review.createdAt.toISOString(),
+      })),
+    }
+  })
 
   const averageRating =
     completedReviews.length > 0

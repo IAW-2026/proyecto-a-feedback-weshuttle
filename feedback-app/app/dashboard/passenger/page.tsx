@@ -5,6 +5,7 @@ import CompleteReviewForm from "../../components/CompleteReviewForm"
 import { getCurrentUser } from "@/lib/current-user"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
+import { getPoolDetailsMap } from "../../../lib/pools"
 
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
   include: { author: true; recipient: true }
@@ -69,6 +70,7 @@ export default async function PassengerDashboard() {
   }
 
   const reviews = await getReviews(user.id)
+  const poolDetails = await getPoolDetailsMap(reviews.map((r) => r.pool_id))
 
   const completedReviews = reviews.filter(
     (review) =>
@@ -234,39 +236,43 @@ export default async function PassengerDashboard() {
 
                 <div className="space-y-5">
 
-                  {pendingReviews.map((review) => (
+                  {pendingReviews.map((review) => {
+                    const poolInfo = poolDetails[review.pool_id];
+                    return (
+                      <div key={review.id} className="ws-card ws-card-large">
 
-                    <div key={review.id} className="ws-card ws-card-large">
+                        <div className="flex items-start justify-between mb-6">
 
-                      <div className="flex items-start justify-between mb-6">
+                          <div>
 
-                        <div>
+                            <p className="text-sm text-neutral-500 mb-2">
+                              Viaje a: <span className="font-bold text-[var(--ws-midnight)]">{poolInfo?.destinationName ?? "Polo Petroquímico"}</span>
+                            </p>
 
-                          <p className="text-sm text-neutral-500 mb-2">
-                            Viaje completado
-                          </p>
+                            <h3 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
+                              {poolInfo ? new Intl.DateTimeFormat("es-AR", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              }).format(poolInfo.departureTime) : "Feedback del viaje"}
+                            </h3>
 
-                          <h3 className="text-2xl font-black tracking-tight">
-                            Feedback del viaje
-                          </h3>
+                          </div>
+
+                          <div className="ws-pill ws-pill-warning">
+                            Pending
+                          </div>
 
                         </div>
 
-                        <div className="ws-pill ws-pill-warning">
-                          Pending
-                        </div>
+                        <p className="text-[var(--ws-slate)] mb-6 leading-relaxed">
+                          Tu viaje con destino a {poolInfo?.destinationName ?? "Polo Petroquímico"} está esperando feedback. Evaluá tu experiencia y ayudá a mejorar futuros viajes.
+                        </p>
+
+                        <CompleteReviewForm reviewId={review.id} poolId={review.pool_id} />
 
                       </div>
-
-                      <p className="text-[var(--ws-slate)] mb-6 leading-relaxed">
-                        Tu viaje está esperando feedback. Evaluá tu experiencia y ayudá a mejorar futuros viajes.
-                      </p>
-
-                      <CompleteReviewForm reviewId={review.id} poolId={review.pool_id} />
-
-                    </div>
-
-                  ))}
+                    );
+                  })}
 
                 </div>
 
@@ -285,53 +291,57 @@ export default async function PassengerDashboard() {
 
                 <div className="space-y-5">
 
-                  {completedReviews.map((review) => (
+                  {completedReviews.map((review) => {
+                    const poolInfo = poolDetails[review.pool_id];
+                    return (
+                      <div key={review.id} className="ws-card ws-card-large">
 
-                    <div key={review.id} className="ws-card ws-card-large">
+                        <div className="flex items-start justify-between mb-6">
 
-                      <div className="flex items-start justify-between mb-6">
+                          <div>
 
-                        <div>
+                            <p className="text-sm text-neutral-500 mb-2">
+                              Reseña del conductor • Viaje a: <span className="font-bold text-[var(--ws-midnight)]">{poolInfo?.destinationName ?? "Polo Petroquímico"}</span>
+                            </p>
 
-                          <p className="text-sm text-neutral-500 mb-2">
-                            Reseña del conductor
+                            <h3 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
+                              {poolInfo ? new Intl.DateTimeFormat("es-AR", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              }).format(poolInfo.departureTime) : "Experiencia del viaje"}
+                            </h3>
+
+                          </div>
+
+                          <div className="ws-pill ws-pill-success">
+                            Completed
+                          </div>
+
+                        </div>
+
+                        <div className="flex gap-1 text-3xl mb-5 text-[var(--ws-success)]">
+                          {"★".repeat(review.rating || 0)}
+                        </div>
+
+                        <div className="mb-4">
+
+                          <p className="text-sm text-neutral-500">
+                            Escrito por
                           </p>
 
-                          <h3 className="text-2xl font-black tracking-tight">
-                            Experiencia del viaje
-                          </h3>
+                          <p className="font-medium text-[var(--ws-midnight)]">
+                            {review.author.name || review.author.id}
+                          </p>
 
                         </div>
 
-                        <div className="ws-pill ws-pill-success">
-                          Completed
-                        </div>
-
-                      </div>
-
-                      <div className="flex gap-1 text-3xl mb-5 text-[var(--ws-success)]">
-                        {"★".repeat(review.rating || 0)}
-                      </div>
-
-                      <div className="mb-4">
-
-                        <p className="text-sm text-neutral-500">
-                          Escrito por
-                        </p>
-
-                        <p className="font-medium text-[var(--ws-midnight)]">
-                          {review.author.name || review.author.id}
+                        <p className="text-[var(--ws-midnight)] text-lg leading-relaxed">
+                          {review.comment}
                         </p>
 
                       </div>
-
-                      <p className="text-[var(--ws-midnight)] text-lg leading-relaxed">
-                        {review.comment}
-                      </p>
-
-                    </div>
-
-                  ))}
+                    );
+                  })}
 
                 </div>
 
