@@ -5,7 +5,6 @@ import CompleteReviewForm from "../../components/CompleteReviewForm"
 import { getCurrentUser } from "@/lib/current-user"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
-import ProfileNameEditor from "../../components/ProfileNameEditor"
 
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
   include: { author: true; recipient: true }
@@ -129,8 +128,6 @@ export default async function PassengerDashboard() {
             </div>
 
           </div>
-
-          <ProfileNameEditor initialName={user.name ?? ""} />
 
         </section>
 

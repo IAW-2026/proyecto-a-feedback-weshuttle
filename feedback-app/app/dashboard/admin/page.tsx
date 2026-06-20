@@ -5,7 +5,6 @@ import { redirect } from "next/navigation"
 import { getCurrentUser } from "../../../lib/current-user"
 import AdminReviewsTable from "../../components/AdminReviewsTable"
 import { Prisma } from "@prisma/client"
-import ProfileNameEditor from "../../components/ProfileNameEditor"
 import { createAdminReview, type CreateAdminReviewInput } from "@/lib/reviews/admin-create-review"
 import { Suspense } from "react"
 
@@ -90,7 +89,6 @@ export default async function AdminDashboard() {
             </div>
           </div>
 
-          <ProfileNameEditor initialName={user.name} />
         </section>
 
         {/* STATISTICS ABOVE TABLE */}

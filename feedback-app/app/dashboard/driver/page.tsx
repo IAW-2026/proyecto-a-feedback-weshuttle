@@ -7,7 +7,6 @@ import DriverSimulationControls from "../../components/DriverSimulationControls"
 import DriverPendingTripsAccordion from "../../components/DriverPendingTripsAccordion"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
-import ProfileNameEditor from "../../components/ProfileNameEditor"
 
 // Definimos el tipo exacto que devuelve Prisma incluyendo las relaciones
 type ReviewWithUsers = Prisma.ReviewGetPayload<{
@@ -199,8 +198,6 @@ export default async function DriverDashboard() {
             </div>
 
           </div>
-
-          <ProfileNameEditor initialName={user.name ?? ""} />
 
         </section>
 
