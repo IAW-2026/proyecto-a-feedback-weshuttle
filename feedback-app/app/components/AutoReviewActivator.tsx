@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@clerk/nextjs"
 import { checkAndActivatePoolsAction } from "../actions/reviews"
 import Toast from "./Toast"
 
@@ -11,6 +12,7 @@ interface AutoReviewActivatorProps {
 
 export default function AutoReviewActivator({ userId }: AutoReviewActivatorProps) {
   const router = useRouter()
+  const { isSignedIn, isLoaded } = useAuth()
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [showToast, setShowToast] = useState(false)
   
@@ -19,6 +21,10 @@ export default function AutoReviewActivator({ userId }: AutoReviewActivatorProps
   const isFirstLoadRef = useRef(true)
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      return
+    }
+
     // Definimos un intervalo para consultar el estado del pool periódicamente (cada 8 segundos)
     const interval = setInterval(async () => {
       try {
@@ -53,13 +59,13 @@ export default function AutoReviewActivator({ userId }: AutoReviewActivatorProps
             router.refresh()
           }
         }
-      } catch (error) {
-        console.error("[AutoReviewActivator] Error en el intervalo de activación automática:", error)
+      } catch (error: any) {
+        console.warn("[AutoReviewActivator] Advertencia en el intervalo de activación automática (posible sesión expirada o red lenta):", error?.message || error)
       }
     }, 8000) // 8 segundos para que sea un poco más responsivo en pruebas
 
     return () => clearInterval(interval)
-  }, [userId, router])
+  }, [userId, router, isSignedIn, isLoaded])
 
   return (
     <Toast
