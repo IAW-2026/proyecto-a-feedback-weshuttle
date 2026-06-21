@@ -133,7 +133,7 @@ export async function POST(req: Request) {
     }
 
     // 4. Notificar al conductor (Driver App)
-    const driverAppUrl = process.env.DRIVER_APP_API_URL || process.env.NEXT_PUBLIC_DRIVER_APP_URL;
+    const driverAppUrl = process.env.DRIVER_APP_API_URL || process.env.NEXT_PUBLIC_DRIVER_APP_URL || "https://proyecto-a-driver2-weshuttle.vercel.app";
     if (driverAppUrl && poolDriverReview) {
       try {
         const url = `${driverAppUrl}/api/notifications/feedback`;
