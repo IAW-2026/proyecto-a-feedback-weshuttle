@@ -262,17 +262,25 @@ export default async function PassengerDashboard() {
                   </h3>
 
                   <p className="text-white/70 text-sm max-w-md leading-relaxed">
-                    Accedé a todas las reseñas recibidas por conductores y revisá tu actividad reciente.
+                    Accedé a todas las reseñas recibidas y enviadas, organizadas por pool y fecha para un mejor seguimiento.
                   </p>
 
                 </div>
 
-                <Link
-                  href="/dashboard/passenger/trips"
-                  className="inline-flex shrink-0 items-center justify-center rounded-[8px] bg-white text-[var(--ws-midnight)] px-8 py-4 text-sm font-black transition-all hover:bg-neutral-100 hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  Ver mis viajes →
-                </Link>
+                <div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
+                  <Link
+                    href="/dashboard/passenger/trips"
+                    className="inline-flex shrink-0 items-center justify-center rounded-[8px] bg-white text-[var(--ws-midnight)] px-8 py-4 text-sm font-black transition-all hover:bg-neutral-100 hover:scale-[1.02] active:scale-[0.98] w-full md:w-auto text-center font-bold"
+                  >
+                    Reseñas recibidas →
+                  </Link>
+                  <Link
+                    href="/dashboard/passenger/sent-reviews"
+                    className="inline-flex shrink-0 items-center justify-center rounded-[8px] border-2 border-white/20 hover:border-white text-white px-8 py-4 text-sm font-black transition-all hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98] w-full md:w-auto text-center font-bold"
+                  >
+                    Reseñas enviadas →
+                  </Link>
+                </div>
 
               </div>
 

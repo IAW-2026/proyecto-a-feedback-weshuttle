@@ -16,11 +16,12 @@ type ReviewItem = {
 type Props = {
   reviews: ReviewItem[]
   currentUserRole: "driver" | "rider"
+  hideReportButton?: boolean
 }
 
 const pageSize = 3
 
-export default function PaginatedReviews({ reviews, currentUserRole }: Props) {
+export default function PaginatedReviews({ reviews, currentUserRole, hideReportButton }: Props) {
   const [currentPage, setCurrentPage] = useState(1)
 
   const totalPages = Math.max(1, Math.ceil(reviews.length / pageSize))
@@ -128,13 +129,15 @@ export default function PaginatedReviews({ reviews, currentUserRole }: Props) {
                 {review.comment || "Sin comentario registrado."}
               </p>
 
-              <div className="flex justify-end pt-4 border-t border-[var(--ws-outline)]">
-                <ReportReviewModal 
-                  reviewId={review.id} 
-                  reporterRole={currentUserRole} 
-                  initialIsReported={review.isReported}
-                />
-              </div>
+              {!hideReportButton && (
+                <div className="flex justify-end pt-4 border-t border-[var(--ws-outline)]">
+                  <ReportReviewModal 
+                    reviewId={review.id} 
+                    reporterRole={currentUserRole} 
+                    initialIsReported={review.isReported}
+                  />
+                </div>
+              )}
             </div>
           </article>
         ))}

@@ -317,16 +317,24 @@ export default async function DriverDashboard() {
                   <p className="text-sm text-white/60 mb-1 uppercase font-bold tracking-wider">Historial de Feedback</p>
                   <h3 className="text-2xl font-black tracking-tight mb-2">Consulta tus viajes anteriores</h3>
                   <p className="text-white/70 text-sm max-w-md leading-relaxed">
-                    Accede al registro completo de reseñas recibidas, organizadas por pool y fecha para un mejor seguimiento.
+                    Accede al registro completo de reseñas recibidas y enviadas, organizadas por pool y fecha para un mejor seguimiento.
                   </p>
                 </div>
 
-                <Link
-                  href="/dashboard/driver/trips"
-                  className="inline-flex shrink-0 items-center justify-center rounded-[8px] bg-white text-[var(--ws-midnight)] px-8 py-4 text-sm font-black transition-all hover:bg-neutral-100 hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  Ver mis viajes →
-                </Link>
+                <div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
+                  <Link
+                    href="/dashboard/driver/trips"
+                    className="inline-flex shrink-0 items-center justify-center rounded-[8px] bg-white text-[var(--ws-midnight)] px-8 py-4 text-sm font-black transition-all hover:bg-neutral-100 hover:scale-[1.02] active:scale-[0.98] w-full md:w-auto text-center font-bold"
+                  >
+                    Reseñas recibidas →
+                  </Link>
+                  <Link
+                    href="/dashboard/driver/sent-reviews"
+                    className="inline-flex shrink-0 items-center justify-center rounded-[8px] border-2 border-white/20 hover:border-white text-white px-8 py-4 text-sm font-black transition-all hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98] w-full md:w-auto text-center font-bold"
+                  >
+                    Reseñas enviadas →
+                  </Link>
+                </div>
               </div>
             </div>
 
