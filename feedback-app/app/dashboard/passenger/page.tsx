@@ -1,7 +1,7 @@
 import { prisma } from "../../../lib/prisma"
 import Navbar from "../../components/NavBar"
 import { redirect } from "next/navigation"
-import CompleteReviewForm from "../../components/CompleteReviewForm"
+import PassengerPendingReviews from "../../components/PassengerPendingReviews"
 import { getCurrentUser } from "@/lib/current-user"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
@@ -144,7 +144,7 @@ export default async function PassengerDashboard() {
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
           {/* LEFT */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-5 space-y-6">
 
             {/* STATS */}
             <div className="ws-card ws-card-large">
@@ -195,6 +195,52 @@ export default async function PassengerDashboard() {
 
             </div>
 
+            {/* COMPLETED REVIEWS (FEEDBACK RECIBIDO) */}
+            {completedReviews.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold tracking-tight text-[var(--ws-midnight)]">
+                  Feedback Recibido (Últimos 4)
+                </h3>
+                
+                <div className="space-y-4">
+                  {completedReviews.slice(0, 4).map((review) => {
+                    const poolInfo = poolDetails[review.pool_id];
+                    return (
+                      <div key={review.id} className="ws-card p-5">
+                        <div className="flex items-start justify-between mb-3 gap-2">
+                          <div>
+                            <p className="text-xs text-neutral-500 mb-0.5">
+                              Viaje: <span className="font-bold text-[var(--ws-midnight)]">{poolInfo?.destinationName ?? "Polo Petroquímico"}</span>
+                            </p>
+                            <h4 className="text-xs font-bold text-neutral-600">
+                              {poolInfo ? new Intl.DateTimeFormat("es-AR", {
+                                dateStyle: "short",
+                                timeStyle: "short",
+                              }).format(poolInfo.departureTime) : "Fecha del viaje"}
+                            </h4>
+                          </div>
+                          <div className="flex gap-0.5 text-lg text-[var(--ws-success)]">
+                            {"★".repeat(review.rating || 0)}
+                          </div>
+                        </div>
+
+                        <p className="text-[15px] leading-relaxed text-[var(--ws-midnight)] mb-3 italic">
+                          "{review.comment}"
+                        </p>
+
+                        <div className="text-xs text-neutral-500 pt-2 border-t border-[var(--ws-outline)]">
+                          <span>Escrito por: </span>
+                          <span className="font-semibold text-[var(--ws-midnight)]">
+                            {review.author.name || review.author.id}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
           </div>
 
           {/* RIGHT */}
@@ -234,133 +280,15 @@ export default async function PassengerDashboard() {
 
             {/* PENDING REVIEWS */}
             {pendingReviews.length > 0 && (
-
               <div className="mb-10">
-
                 <h2 className="text-3xl font-black tracking-tight mb-6 text-[var(--ws-midnight)]">
                   Reseñas Pendientes
                 </h2>
-
-                <div className="space-y-5">
-
-                  {pendingReviews.map((review) => {
-                    const poolInfo = poolDetails[review.pool_id];
-                    return (
-                      <div key={review.id} className="ws-card ws-card-large">
-
-                        <div className="flex items-start justify-between mb-6">
-
-                          <div>
-
-                            <p className="text-sm text-neutral-500 mb-2">
-                              Viaje a: <span className="font-bold text-[var(--ws-midnight)]">{poolInfo?.destinationName ?? "Polo Petroquímico"}</span>
-                            </p>
-
-                            <h3 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
-                              {poolInfo ? new Intl.DateTimeFormat("es-AR", {
-                                dateStyle: "medium",
-                                timeStyle: "short",
-                              }).format(poolInfo.departureTime) : "Feedback del viaje"}
-                            </h3>
-
-                          </div>
-
-                          {review.status === "PRECREATED" ? (
-                            <div className="ws-pill ws-pill-info">
-                              Precreated
-                            </div>
-                          ) : (
-                            <div className="ws-pill ws-pill-warning">
-                              Pending
-                            </div>
-                          )}
-
-                        </div>
-
-                        <p className="text-[var(--ws-slate)] mb-6 leading-relaxed">
-                          Tu viaje con destino a {poolInfo?.destinationName ?? "Polo Petroquímico"} está esperando feedback. Evaluá tu experiencia y ayudá a mejorar futuros viajes.
-                        </p>
-
-                        <CompleteReviewForm reviewId={review.id} poolId={review.pool_id} />
-
-                      </div>
-                    );
-                  })}
-
-                </div>
-
+                <PassengerPendingReviews reviews={pendingReviews} poolDetails={poolDetails} />
               </div>
-
             )}
 
-            {/* COMPLETED REVIEWS */}
-            {completedReviews.length > 0 && (
 
-              <div>
-
-                <h2 className="text-3xl font-black tracking-tight mb-6 text-[var(--ws-midnight)]">
-                  Feedback Recibido
-                </h2>
-
-                <div className="space-y-5">
-
-                  {completedReviews.map((review) => {
-                    const poolInfo = poolDetails[review.pool_id];
-                    return (
-                      <div key={review.id} className="ws-card ws-card-large">
-
-                        <div className="flex items-start justify-between mb-6">
-
-                          <div>
-
-                            <p className="text-sm text-neutral-500 mb-2">
-                              Reseña del conductor • Viaje a: <span className="font-bold text-[var(--ws-midnight)]">{poolInfo?.destinationName ?? "Polo Petroquímico"}</span>
-                            </p>
-
-                            <h3 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
-                              {poolInfo ? new Intl.DateTimeFormat("es-AR", {
-                                dateStyle: "medium",
-                                timeStyle: "short",
-                              }).format(poolInfo.departureTime) : "Experiencia del viaje"}
-                            </h3>
-
-                          </div>
-
-                          <div className="ws-pill ws-pill-success">
-                            Completed
-                          </div>
-
-                        </div>
-
-                        <div className="flex gap-1 text-3xl mb-5 text-[var(--ws-success)]">
-                          {"★".repeat(review.rating || 0)}
-                        </div>
-
-                        <div className="mb-4">
-
-                          <p className="text-sm text-neutral-500">
-                            Escrito por
-                          </p>
-
-                          <p className="font-medium text-[var(--ws-midnight)]">
-                            {review.author.name || review.author.id}
-                          </p>
-
-                        </div>
-
-                        <p className="text-[var(--ws-midnight)] text-lg leading-relaxed">
-                          {review.comment}
-                        </p>
-
-                      </div>
-                    );
-                  })}
-
-                </div>
-
-              </div>
-
-            )}
 
             {/* EMPTY STATE */}
             {pendingReviews.length === 0 &&

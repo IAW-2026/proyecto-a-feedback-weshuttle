@@ -1,6 +1,86 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { prisma } from "./prisma"
 
+async function syncExternalName(userId: string, role: string, currentName: string | null) {
+  // Buscar el pool_id del viaje más reciente del usuario a partir de sus reseñas
+  const latestReview = await prisma.review.findFirst({
+    where: {
+      OR: [
+        { author_user_id: userId },
+        { target_user_id: userId }
+      ]
+    },
+    orderBy: {
+      createdAt: 'desc'
+    },
+    select: {
+      pool_id: true
+    }
+  })
+
+  if (!latestReview) {
+    return currentName
+  }
+
+  const poolId = latestReview.pool_id
+
+  if (role === 'rider') {
+    try {
+      const riderAppUrl = process.env.RIDER_APP_API_URL || "https://proyecto-a-rider-weshuttle.vercel.app"
+      const url = `${riderAppUrl}/api/pools/${poolId}/passengers?status=PAID`
+      console.log(`Syncing rider name from: ${url}`)
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 1500)
+      
+      const res = await fetch(url, { signal: controller.signal })
+      clearTimeout(timeoutId)
+
+      if (res.ok) {
+        const data = await res.json()
+        const passenger = data.passengers?.find((p: any) => p.passenger_user_id === userId)
+        if (passenger && passenger.passenger_name && passenger.passenger_name !== currentName) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { name: passenger.passenger_name }
+          })
+          return passenger.passenger_name
+        }
+      }
+    } catch (e) {
+      console.error("Failed to sync rider name from Rider App:", e)
+    }
+  } else if (role === 'driver') {
+    try {
+      const driverAppUrl = process.env.DRIVER_APP_API_URL || process.env.NEXT_PUBLIC_DRIVER_APP_URL || "https://proyecto-a-driver2-weshuttle.vercel.app"
+      const url = `${driverAppUrl}/api/pools/${poolId}/assigned-driver`
+      console.log(`Syncing driver name from: ${url}`)
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 1500)
+      
+      const res = await fetch(url, { signal: controller.signal })
+      clearTimeout(timeoutId)
+
+      if (res.ok) {
+        const data = await res.json()
+        const driverName = data.driver?.full_name
+        if (driverName && driverName !== currentName) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { name: driverName }
+          })
+          return driverName
+        }
+      }
+    } catch (e) {
+      console.error("Failed to sync driver name from Driver App:", e)
+    }
+  }
+
+  return currentName
+}
+
 export async function getCurrentUser() {
   const clerkUser = await currentUser()
 
@@ -25,11 +105,14 @@ export async function getCurrentUser() {
     clerkUserId = "user_3EYGQCDMhqZaMRhMIgYvm46DK1P"
   }
 
-  const existing = await prisma.user.findUnique({ where: { id: clerkUserId } })
+  let existing = await prisma.user.findUnique({ where: { id: clerkUserId } })
 
   if (existing) {
-    if (!existing.name && fullName) {
-      return await prisma.user.update({
+    const syncedName = await syncExternalName(clerkUserId, existing.role, existing.name)
+    if (syncedName && syncedName !== existing.name) {
+      existing.name = syncedName
+    } else if (!existing.name && fullName) {
+      existing = await prisma.user.update({
         where: { id: clerkUserId },
         data: { name: fullName },
       })
@@ -39,13 +122,18 @@ export async function getCurrentUser() {
   }
 
   // No existe en DB: creamos usando el role inferido desde Clerk metadata.
-  const user = await prisma.user.create({
+  let user = await prisma.user.create({
     data: {
       id: clerkUserId,
       name: fullName || null,
       role: inferredRole,
     },
   })
+
+  const syncedName = await syncExternalName(clerkUserId, inferredRole, user.name)
+  if (syncedName && syncedName !== user.name) {
+    user.name = syncedName
+  }
 
   return user
 }

@@ -173,7 +173,7 @@ export default function DriverPendingTripsAccordion({ trips }: Props) {
 												)}
 											</div>
 
-											<CompleteReviewForm reviewId={review.id} poolId={trip.poolId} />
+											<CompleteReviewForm reviewId={review.id} poolId={trip.poolId} status={review.status} />
 										</div>
 									))}
 								</div>

@@ -7,38 +7,32 @@ datasource db {
 }
 
 model User {
-  id String @id
-
-  name String?
-  role Role @default(rider)
+  id              String   @id
+  name            String?
+  role            Role     @default(rider)
+  createdAt       DateTime @default(now())
   reviewsSent     Review[] @relation("ReviewsSent")
   reviewsReceived Review[] @relation("ReviewsReceived")
-  createdAt DateTime @default(now())
 }
 
 model Review {
   id             String       @id @default(cuid())
   pool_id        String
   reservation_id String?
-
   author_user_id String
   author_role    Role
   target_user_id String
   target_role    Role
-
-  author         User         @relation("ReviewsSent", fields: [author_user_id], references: [id])
-  recipient      User         @relation("ReviewsReceived", fields: [target_user_id], references: [id])
-
   rating         Int?
   comment        String?
-
   status         ReviewStatus @default(PRECREATED)
-
   enabled_at     DateTime?
   completed_at   DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   reports        Report[]
+  author         User         @relation("ReviewsSent", fields: [author_user_id], references: [id])
+  recipient      User         @relation("ReviewsReceived", fields: [target_user_id], references: [id])
 }
 
 model RatingAverage {
@@ -53,19 +47,16 @@ model RatingAverage {
 }
 
 model Report {
-  id               String    @id @default(cuid())
+  id               String       @id @default(cuid())
   review_id        String
-  review           Review    @relation(fields: [review_id], references: [id], onDelete: Cascade)
-  
   reporter_user_id String
   reporter_role    Role
-  
   type             ReportType
-  description      String?   // Comentario opcional
+  description      String?
   status           ReportStatus @default(PENDING)
-  
   reviewed_at      DateTime?
-  createdAt        DateTime  @default(now())
+  createdAt        DateTime     @default(now())
+  review           Review       @relation(fields: [review_id], references: [id], onDelete: Cascade)
 }
 
 enum ReportType {
@@ -83,7 +74,7 @@ enum ReportStatus {
   RECHAZADO
 }
 
-enum ReviewStatus { // Renombrado de EstadoReseña
+enum ReviewStatus {
   PRECREATED
   PENDING
   COMPLETED

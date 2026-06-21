@@ -7,9 +7,11 @@ import Toast from "./Toast"
 export default function CompleteReviewForm({
   reviewId,
   poolId,
+  status,
 }: {
   reviewId: string
   poolId?: string
+  status?: string
 }) {
 
   const [comment, setComment] = useState("")
@@ -21,11 +23,21 @@ export default function CompleteReviewForm({
 
   const router = useRouter()
 
+  const trimmedComment = comment.trim()
+  const hasMinChars = trimmedComment.length >= 5
+  const isDisabled = rating === 0 || !hasMinChars
+  const remainingChars = Math.max(0, 5 - trimmedComment.length)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
     if (rating === 0) {
       setError("Seleccioná una cantidad de estrellas antes de enviar")
+      return
+    }
+
+    if (!hasMinChars) {
+      setError("El comentario debe tener al menos 5 caracteres")
       return
     }
 
@@ -134,6 +146,20 @@ export default function CompleteReviewForm({
             placeholder="Contanos sobre tu experiencia..."
             className="ws-textarea text-[15px] placeholder:text-slate-400"
           />
+          <div className="flex justify-between items-center mt-1.5 text-xs text-[var(--ws-slate)] px-1 font-medium">
+            <span>
+              * Mínimo 5 caracteres
+            </span>
+            {remainingChars > 0 ? (
+              <span>
+                Faltan {remainingChars} {remainingChars === 1 ? "carácter" : "caracteres"}
+              </span>
+            ) : (
+              <span>
+                Mínimo alcanzado ✓
+              </span>
+            )}
+          </div>
 
         </div>
 
@@ -142,9 +168,13 @@ export default function CompleteReviewForm({
         )}
 
         <button
-          className="ws-primary-button w-full cursor-pointer"
+          className={`ws-primary-button w-full transition-all duration-150 ${
+            isDisabled
+              ? "!bg-slate-300 !text-slate-500 !cursor-not-allowed opacity-60"
+              : "cursor-pointer"
+          }`}
           type="submit"
-          disabled={rating === 0}
+          disabled={isDisabled}
         >
           Enviar Feedback
         </button>
