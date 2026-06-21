@@ -117,6 +117,7 @@ export default function PassengerPendingReviews({ reviews, poolDetails }: Props)
                     {poolInfo ? new Intl.DateTimeFormat("es-AR", {
                       dateStyle: "medium",
                       timeStyle: "short",
+                      timeZone: "America/Argentina/Buenos_Aires",
                     }).format(new Date(poolInfo.departureTime)) : "Feedback del viaje"}
                   </h3>
                 </div>

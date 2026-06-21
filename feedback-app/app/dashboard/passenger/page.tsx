@@ -216,6 +216,7 @@ export default async function PassengerDashboard() {
                               {poolInfo ? new Intl.DateTimeFormat("es-AR", {
                                 dateStyle: "short",
                                 timeStyle: "short",
+                                timeZone: "America/Argentina/Buenos_Aires",
                               }).format(poolInfo.departureTime) : "Fecha del viaje"}
                             </h4>
                           </div>
