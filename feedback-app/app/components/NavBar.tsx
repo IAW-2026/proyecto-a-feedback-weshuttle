@@ -23,12 +23,25 @@ export default function Navbar({ role, displayName }: NavbarProps) {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 
-        <Link href={homeHref}>
-
-          <h1 className="ws-brand hover:opacity-80 transition-opacity cursor-pointer">
+        <Link href={homeHref} className="flex items-center gap-3 hover:opacity-85 transition-opacity">
+          <div className="flex items-center justify-center w-11 h-11 bg-white rounded-xl border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-1.5 shrink-0">
+            <svg viewBox="0 0 100 100" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M 22 34 L 35 75 L 50 45 L 65 75 L 78 34"
+                fill="none"
+                stroke="#0c59cf"
+                strokeWidth="13"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="22" cy="30" r="8.5" fill="#e63946" />
+              <circle cx="50" cy="40" r="8.5" fill="#f59e0b" />
+              <circle cx="78" cy="30" r="8.5" fill="#10b981" />
+            </svg>
+          </div>
+          <span className="ws-brand">
             WeShuttle
-          </h1>
-
+          </span>
         </Link>
 
         {isSignedIn && (
