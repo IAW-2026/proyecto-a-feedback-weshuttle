@@ -70,6 +70,7 @@ function formatTripDate(date: Date) {
   return new Intl.DateTimeFormat("es-AR", {
     dateStyle: "full",
     timeStyle: "short",
+    timeZone: "America/Argentina/Buenos_Aires",
   }).format(date)
 
 }
@@ -78,6 +79,7 @@ function formatTripKeyDate(date: Date) {
 
   return new Intl.DateTimeFormat("es-AR", {
     dateStyle: "long",
+    timeZone: "America/Argentina/Buenos_Aires",
   }).format(date)
 
 }

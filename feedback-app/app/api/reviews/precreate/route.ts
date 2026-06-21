@@ -206,11 +206,10 @@ export async function POST(req: Request) {
       },
     });
 
-    // Limpia una simulación previa para que el conteo arranque en cero
+    // Limpia una simulación previa de ESTE pool para que el conteo arranque en cero
     await prisma.review.deleteMany({
       where: {
-        author_user_id: driver_user_id,
-        author_role: 'driver',
+        pool_id,
         status: {
           in: ['PRECREATED', 'PENDING'],
         },

@@ -54,18 +54,11 @@ export async function GET(
     const uniquePassengers: { passenger_user_id: string; passenger_name: string }[] = [];
     const seen = new Set<string>();
     for (const p of passengers) {
-      let passengerId = p.passenger_user_id;
-      let passengerName = p.passenger_name;
-      if (passengerId === 'user_3Db8E5HISehCv1nAJkIwlHXxtiG') {
-        passengerId = 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P';
-        passengerName = 'Pasajero (Usuario de Clerk)';
-      }
-
-      if (!seen.has(passengerId)) {
-        seen.add(passengerId);
+      if (!seen.has(p.passenger_user_id)) {
+        seen.add(p.passenger_user_id);
         uniquePassengers.push({
-          passenger_user_id: passengerId,
-          passenger_name: passengerName
+          passenger_user_id: p.passenger_user_id,
+          passenger_name: p.passenger_name
         });
       }
     }
@@ -98,7 +91,7 @@ export async function GET(
 
     const ratings = uniquePassengers.map(passenger => {
       const stats = ratingsMap.get(passenger.passenger_user_id);
-      const average_rating = stats && stats.count > 0 
+      const average_rating = stats && stats.count > 0
         ? Number((stats.sum / stats.count).toFixed(1))
         : null;
       const total_reviews = stats ? stats.count : 0;
@@ -125,7 +118,7 @@ export async function GET(
 function getMockPassengers() {
   return [
     {
-      passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P', 
+      passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P',
       passenger_name: 'Pasajero (Usuario de Clerk)',
     },
     {
@@ -137,7 +130,7 @@ function getMockPassengers() {
       passenger_name: 'Pasajero de Prueba 3',
     },
     {
-      passenger_user_id: 'user_rider_004', 
+      passenger_user_id: 'user_rider_004',
       passenger_name: 'Pasajero de Prueba 4',
     },
     {

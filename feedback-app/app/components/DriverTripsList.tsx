@@ -60,6 +60,7 @@ function highlightText(text: string | null | undefined, search: string) {
 function formatTripKeyDate(date: Date) {
   return new Intl.DateTimeFormat("es-AR", {
     dateStyle: "long",
+    timeZone: "America/Argentina/Buenos_Aires",
   }).format(new Date(date))
 }
 

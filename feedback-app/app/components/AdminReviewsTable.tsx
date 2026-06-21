@@ -74,7 +74,7 @@ type TripGroup = {
 type CreateMode = "driver" | "rider"
 
 function formatTripKeyDate(date: Date) {
-  return new Intl.DateTimeFormat("es-AR", { dateStyle: "long" }).format(date)
+  return new Intl.DateTimeFormat("es-AR", { dateStyle: "long", timeZone: "America/Argentina/Buenos_Aires" }).format(date)
 }
 
 function toReviewRole(role: TripParticipant["role"]) {
@@ -555,7 +555,7 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
                       <tbody>
                         {trip.reviews.map((r) => (
                           <tr key={r.id} className="border-t last:border-b">
-                            <td className="p-2 align-top text-sm">{new Date(r.createdAt).toLocaleString()}</td>
+                            <td className="p-2 align-top text-sm">{new Date(r.createdAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })}</td>
                             <td className="p-2 align-top text-sm">{highlightText(r.author?.name || r.author_user_id, searchQuery)}</td>
                             <td className="p-2 align-top text-sm">{highlightText(r.recipient?.name || r.target_user_id, searchQuery)}</td>
                             <td className="p-2 align-top text-sm">{r.author_role} → {r.recipient_role || "—"}</td>
@@ -644,7 +644,7 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
           <div className="bg-white rounded-lg max-w-2xl w-full p-6">
             <h3 className="text-xl font-bold mb-3">Editar reseña</h3>
             <p className="text-sm text-neutral-600 mb-4">
-              {new Date(selected.createdAt).toLocaleString()} — {selected.author?.name || selected.author_user_id}
+              {new Date(selected.createdAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })} — {selected.author?.name || selected.author_user_id}
             </p>
 
             <div className="mb-3">

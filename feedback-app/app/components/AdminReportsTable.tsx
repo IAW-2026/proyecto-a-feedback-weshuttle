@@ -394,7 +394,7 @@ export default function AdminReportsTable({ initialReports }: Props) {
                         <p className="text-sm text-[var(--ws-midnight)] italic">
                           {report.description || 'Sin descripción adicional.'}
                         </p>
-                        <p className="text-[10px] mt-4 opacity-40 font-bold uppercase">Fecha: {new Date(report.createdAt).toLocaleDateString()}</p>
+                        <p className="text-[10px] mt-4 opacity-40 font-bold uppercase">Fecha: {new Date(report.createdAt).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })}</p>
                       </div>
 
                       <div className="bg-white border border-[var(--ws-outline)] p-4 rounded-xl shadow-sm">
