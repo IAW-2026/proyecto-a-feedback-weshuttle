@@ -8,6 +8,11 @@ const inter = Inter({
   weight: ["400", "600", "700"],
 })
 
+export const metadata = {
+  title: "WeShuttle | Movilidad Corporativa",
+  description: "Plataforma de transporte y feedback de WeShuttle",
+}
+
 export default function RootLayout({
   children,
 }: {

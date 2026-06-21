@@ -23,13 +23,19 @@ export default function CompleteReviewForm({
 
   const router = useRouter()
 
+  const isPrecreated = status === "PRECREATED"
   const trimmedComment = comment.trim()
   const hasMinChars = trimmedComment.length >= 5
-  const isDisabled = rating === 0 || !hasMinChars
+  const isDisabled = rating === 0 || !hasMinChars || isPrecreated
   const remainingChars = Math.max(0, 5 - trimmedComment.length)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    if (isPrecreated) {
+      setError("La reseña está en estado PRECREATED y no se puede enviar aún.")
+      return
+    }
 
     if (rating === 0) {
       setError("Seleccioná una cantidad de estrellas antes de enviar")
@@ -109,7 +115,7 @@ export default function CompleteReviewForm({
 
           <div
             className="flex gap-2 text-5xl"
-            onMouseLeave={() => setHoveredStar(0)}
+            onMouseLeave={() => !isPrecreated && setHoveredStar(0)}
           >
 
             {[1, 2, 3, 4, 5].map((star) => {
@@ -121,9 +127,12 @@ export default function CompleteReviewForm({
                 <button
                   key={star}
                   type="button"
-                  onMouseEnter={() => setHoveredStar(star)}
-                  onClick={() => setRating(star)}
-                  className={`transition-all duration-150 hover:scale-110 cursor-pointer ${
+                  onMouseEnter={() => !isPrecreated && setHoveredStar(star)}
+                  onClick={() => !isPrecreated && setRating(star)}
+                  disabled={isPrecreated}
+                  className={`transition-all duration-150 hover:scale-110 ${
+                    isPrecreated ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                  } ${
                     activeStar
                       ? "text-[var(--ws-success)]"
                       : "text-slate-300"
@@ -143,8 +152,11 @@ export default function CompleteReviewForm({
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Contanos sobre tu experiencia..."
-            className="ws-textarea text-[15px] placeholder:text-slate-400"
+            placeholder={isPrecreated ? "El viaje aún está en progreso. Podrás dejar comentarios al finalizar el recorrido." : "Contanos sobre tu experiencia..."}
+            disabled={isPrecreated}
+            className={`ws-textarea text-[15px] placeholder:text-slate-400 ${
+              isPrecreated ? "bg-slate-50 cursor-not-allowed opacity-60" : ""
+            }`}
           />
           <div className="flex justify-between items-center mt-1.5 text-xs text-[var(--ws-slate)] px-1 font-medium">
             <span>

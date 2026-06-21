@@ -3,7 +3,6 @@ import Navbar from "../../components/NavBar"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "../../../lib/current-user"
 import CompleteReviewForm from "../../components/CompleteReviewForm"
-import DriverSimulationControls from "../../components/DriverSimulationControls"
 import DriverPendingTripsAccordion from "../../components/DriverPendingTripsAccordion"
 import Link from "next/link"
 import { Prisma } from "@prisma/client"
@@ -284,26 +283,51 @@ export default async function DriverDashboard() {
 
             </div>
 
-            {/* SIMULATION TOOLS */}
-            <div className="mt-6 ws-card ws-card-large border-dashed border-2 border-[var(--ws-outline)]">
-
-              <div className="mb-6">
-                <p className="text-xs font-bold text-[var(--ws-midnight)] uppercase tracking-widest mb-2">
-                  Etapa 2 Debug
-                </p>
-                <h3 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
-                  Simulación de Viaje
+            {/* COMPLETED REVIEWS (FEEDBACK RECIBIDO) */}
+            {completedReviews.length > 0 && (
+              <div className="mt-6 space-y-4">
+                <h3 className="text-xl font-bold tracking-tight text-[var(--ws-midnight)]">
+                  Feedback Recibido (Últimos 4)
                 </h3>
+                
+                <div className="space-y-4">
+                  {completedReviews.slice(0, 4).map((review) => {
+                    const poolInfo = poolDetails[review.pool_id];
+                    return (
+                      <div key={review.id} className="ws-card p-5">
+                        <div className="flex items-start justify-between mb-3 gap-2">
+                          <div>
+                            <p className="text-xs text-neutral-500 mb-0.5">
+                              Viaje: <span className="font-bold text-[var(--ws-midnight)]">{poolInfo?.destinationName ?? "Polo Petroquímico"}</span>
+                            </p>
+                            <h4 className="text-xs font-bold text-neutral-600">
+                              {poolInfo ? new Intl.DateTimeFormat("es-AR", {
+                                dateStyle: "short",
+                                timeStyle: "short",
+                              }).format(poolInfo.departureTime) : "Fecha del viaje"}
+                            </h4>
+                          </div>
+                          <div className="flex gap-0.5 text-lg text-[var(--ws-success)]">
+                            {"★".repeat(review.rating || 0)}
+                          </div>
+                        </div>
+
+                        <p className="text-[15px] leading-relaxed text-[var(--ws-midnight)] mb-3 italic">
+                          "{review.comment}"
+                        </p>
+
+                        <div className="text-xs text-neutral-500 pt-2 border-t border-[var(--ws-outline)]">
+                          <span>Escrito por: </span>
+                          <span className="font-semibold text-[var(--ws-midnight)]">
+                            {review.author.name || review.author.id}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-
-              <p className="text-[var(--ws-slate)] text-sm mb-6 leading-relaxed">
-                En la etapa 3 esta acción será disparada por la Driver App
-                Por ahora usá este botón para generar formularios de feedback mutuos.
-              </p>
-
-              <DriverSimulationControls userId={user.id} />
-
-            </div>
+            )}
 
           </div>
 
