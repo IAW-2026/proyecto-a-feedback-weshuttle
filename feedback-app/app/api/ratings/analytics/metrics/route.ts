@@ -156,6 +156,140 @@ export async function GET(req: Request) {
       take: 10
     })
 
+    // --- 4. Additional Analytics Data ---
+
+    // 4.1. Historical daily data (created/completed reviews and daily ratings)
+    const reviewsForHistory = await prisma.review.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate
+        },
+        status: { not: "REMOVED" }
+      },
+      select: {
+        createdAt: true,
+        completed_at: true,
+        rating: true,
+        target_role: true
+      }
+    })
+
+    const dailyDataMap = new Map<string, {
+      date: string;
+      created_count: number;
+      completed_count: number;
+      driver_rating_sum: number;
+      driver_rating_count: number;
+      rider_rating_sum: number;
+      rider_rating_count: number;
+    }>()
+
+    // Initialize the daily buckets for the range
+    const tempDate = new Date(startDate)
+    while (tempDate <= endDate) {
+      const dateStr = tempDate.toISOString().split("T")[0]
+      dailyDataMap.set(dateStr, {
+        date: dateStr,
+        created_count: 0,
+        completed_count: 0,
+        driver_rating_sum: 0,
+        driver_rating_count: 0,
+        rider_rating_sum: 0,
+        rider_rating_count: 0
+      })
+      tempDate.setDate(tempDate.getDate() + 1)
+    }
+
+    // Populate daily data
+    reviewsForHistory.forEach((r: any) => {
+      const createdStr = r.createdAt.toISOString().split("T")[0]
+      const dayObj = dailyDataMap.get(createdStr)
+      if (dayObj) {
+        dayObj.created_count += 1
+        if (r.completed_at) {
+          dayObj.completed_count += 1
+        }
+        if (r.rating !== null && r.rating !== undefined) {
+          if (r.target_role === "driver") {
+            dayObj.driver_rating_sum += r.rating
+            dayObj.driver_rating_count += 1
+          } else if (r.target_role === "rider") {
+            dayObj.rider_rating_sum += r.rating
+            dayObj.rider_rating_count += 1
+          }
+        }
+      }
+    })
+
+    const daily_metrics = Array.from(dailyDataMap.values()).map(day => ({
+      date: day.date,
+      created_count: day.created_count,
+      completed_count: day.completed_count,
+      average_driver_rating: day.driver_rating_count > 0 
+        ? Number((day.driver_rating_sum / day.driver_rating_count).toFixed(2)) 
+        : null,
+      average_rider_rating: day.rider_rating_count > 0 
+        ? Number((day.rider_rating_sum / day.rider_rating_count).toFixed(2)) 
+        : null
+    }))
+
+    // 4.2. Star rating distribution (COMPLETED reviews in range)
+    const ratingDistribution = await prisma.review.groupBy({
+      by: ['rating'],
+      _count: {
+        id: true
+      },
+      where: {
+        status: "COMPLETED",
+        rating: { not: null },
+        createdAt: {
+          gte: startDate,
+          lte: endDate
+        }
+      }
+    })
+
+    const ratings_distribution = {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0
+    } as Record<string, number>
+
+    ratingDistribution.forEach((group: any) => {
+      if (group.rating !== null) {
+        ratings_distribution[group.rating.toString()] = group._count.id
+      }
+    })
+
+    // 4.3. Report type distribution (reports created in range)
+    const reportDistribution = await prisma.report.groupBy({
+      by: ['type'],
+      _count: {
+        id: true
+      },
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate
+        }
+      }
+    })
+
+    const reports_distribution = {
+      SPAM: 0,
+      CONTENIDO_OFENSIVO: 0,
+      INFORMACION_FALSA: 0,
+      DATOS_PERSONALES: 0,
+      OTROS: 0
+    } as Record<string, number>
+
+    reportDistribution.forEach((group: any) => {
+      reports_distribution[group.type] = group._count.id
+    })
+
     // Construct response
     const average_driver_stars = driverAvgAndCount._avg.rating !== null 
       ? Number(driverAvgAndCount._avg.rating.toFixed(2)) 
@@ -175,6 +309,9 @@ export async function GET(req: Request) {
         total_driver_reviews: driverAvgAndCount._count.id,
         total_rider_reviews: riderAvgAndCount._count.id,
       },
+      ratings_distribution,
+      reports_distribution,
+      daily_metrics,
       top_flagged_reviews: flaggedReviews.map((r: any) => ({
         id: r.id,
         pool_id: r.pool_id,
