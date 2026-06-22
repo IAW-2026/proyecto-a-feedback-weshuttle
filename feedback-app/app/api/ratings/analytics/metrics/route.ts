@@ -11,32 +11,44 @@ export async function GET(req: Request) {
     let startDate: Date
     let endDate: Date
 
-    const now = new Date()
+    // Argentina is always UTC-3 (no DST offset since 2009)
+    const ARG_OFFSET_MS = -3 * 60 * 60 * 1000
+
     if (startDateParam) {
-      const parsed = new Date(startDateParam)
+      // Input is YYYY-MM-DD
+      // Parse as UTC first, e.g. "2026-06-21T00:00:00.000Z"
+      const parsed = new Date(`${startDateParam}T00:00:00.000Z`)
       if (Number.isNaN(parsed.getTime())) {
-        startDate = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000)
+        // Fallback: 15 days ago in Argentina
+        const fallback = new Date(Date.now() + ARG_OFFSET_MS)
+        fallback.setUTCDate(fallback.getUTCDate() - 15)
+        startDate = new Date(Date.UTC(fallback.getUTCFullYear(), fallback.getUTCMonth(), fallback.getUTCDate(), 3, 0, 0, 0))
       } else {
-        startDate = parsed
+        // Argentina 00:00:00 is UTC 03:00:00 of the same day
+        startDate = new Date(parsed.getTime() + 3 * 60 * 60 * 1000)
       }
     } else {
-      startDate = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000)
+      // Fallback: 15 days ago in Argentina
+      const fallback = new Date(Date.now() + ARG_OFFSET_MS)
+      fallback.setUTCDate(fallback.getUTCDate() - 15)
+      startDate = new Date(Date.UTC(fallback.getUTCFullYear(), fallback.getUTCMonth(), fallback.getUTCDate(), 3, 0, 0, 0))
     }
 
     if (endDateParam) {
-      const parsed = new Date(endDateParam)
+      const parsed = new Date(`${endDateParam}T00:00:00.000Z`)
       if (Number.isNaN(parsed.getTime())) {
-        endDate = now
+        // Fallback: today in Argentina
+        const fallback = new Date(Date.now() + ARG_OFFSET_MS)
+        endDate = new Date(Date.UTC(fallback.getUTCFullYear(), fallback.getUTCMonth(), fallback.getUTCDate() + 1, 2, 59, 59, 999))
       } else {
-        endDate = parsed
+        // Argentina 23:59:59.999 is UTC 02:59:59.999 of the next day
+        endDate = new Date(parsed.getTime() + 27 * 60 * 60 * 1000 - 1)
       }
     } else {
-      endDate = now
+      // Fallback: today in Argentina
+      const fallback = new Date(Date.now() + ARG_OFFSET_MS)
+      endDate = new Date(Date.UTC(fallback.getUTCFullYear(), fallback.getUTCMonth(), fallback.getUTCDate() + 1, 2, 59, 59, 999))
     }
-
-    // Adjust dates to cover the entire start and end day
-    startDate.setHours(0, 0, 0, 0)
-    endDate.setHours(23, 59, 59, 999)
 
     // 2. Database Queries for Aggregates
 
@@ -79,7 +91,7 @@ export async function GET(req: Request) {
       }
     })
 
-    const totalReviewsCompleted = await prisma.review.count({
+    const completedCreatedInPeriod = await prisma.review.count({
       where: {
         status: "COMPLETED",
         createdAt: {
@@ -90,16 +102,37 @@ export async function GET(req: Request) {
     })
 
     const reviewCompletionRate = totalReviewsCreated > 0
-      ? Number(((totalReviewsCompleted / totalReviewsCreated) * 100).toFixed(1))
+      ? Number(((completedCreatedInPeriod / totalReviewsCreated) * 100).toFixed(1))
       : 0
+
+    // Total reviews completed during the period (used for absolute counts and metrics)
+    const totalReviewsCompleted = await prisma.review.count({
+      where: {
+        status: "COMPLETED",
+        completed_at: {
+          gte: startDate,
+          lte: endDate
+        }
+      }
+    })
 
     // 3. Rating Trends (un punto por día dentro del rango de fechas recibido)
     const reviewsForTrends = await prisma.review.findMany({
       where: {
-        createdAt: {
-          gte: startDate,
-          lte: endDate
-        },
+        OR: [
+          {
+            createdAt: {
+              gte: startDate,
+              lte: endDate
+            }
+          },
+          {
+            completed_at: {
+              gte: startDate,
+              lte: endDate
+            }
+          }
+        ],
         status: { not: "REMOVED" }
       },
       select: {
@@ -110,6 +143,19 @@ export async function GET(req: Request) {
       }
     })
 
+    // Helper to convert Date to Argentina Time for UTC calculations
+    const toArgentina = (date: Date) => {
+      return new Date(date.getTime() - 3 * 60 * 60 * 1000)
+    }
+
+    const getArgentinaDateStr = (date: Date) => {
+      return toArgentina(date).toISOString().split("T")[0]
+    }
+
+    const isSingleDay = getArgentinaDateStr(startDate) === getArgentinaDateStr(endDate);
+    const diffMs = endDate.getTime() - startDate.getTime();
+    const isHourlyGrouping = diffMs <= 1.5 * 24 * 60 * 60 * 1000; // <= 36 hours (e.g., today)
+
     const dailyDataMap = new Map<string, {
       date: string;
       reviewCount: number;
@@ -119,24 +165,81 @@ export async function GET(req: Request) {
       riderRatingCount: number;
     }>()
 
-    // Initialize the daily buckets for the range
-    const tempDate = new Date(startDate)
-    while (tempDate <= endDate) {
-      const dateStr = tempDate.toISOString().split("T")[0]
-      dailyDataMap.set(dateStr, {
-        date: dateStr,
-        reviewCount: 0,
-        driverRatingSum: 0,
-        driverRatingCount: 0,
-        riderRatingSum: 0,
-        riderRatingCount: 0
-      })
-      tempDate.setDate(tempDate.getDate() + 1)
+    // Initialize the buckets (using UTC consistently with Argentina offset to avoid timezone discrepancies)
+    if (isHourlyGrouping) {
+      if (isSingleDay) {
+        // Initialize 24 hourly buckets for a single day: "00:00", "01:00", ...
+        for (let h = 0; h < 24; h++) {
+          const hourStr = `${h.toString().padStart(2, "0")}:00`;
+          dailyDataMap.set(hourStr, {
+            date: hourStr,
+            reviewCount: 0,
+            driverRatingSum: 0,
+            driverRatingCount: 0,
+            riderRatingSum: 0,
+            riderRatingCount: 0
+          });
+        }
+      } else {
+        // Hourly buckets across 2 days (every 2 hours to avoid X-axis clutter)
+        const temp = toArgentina(startDate);
+        const tempEnd = toArgentina(endDate);
+        while (temp <= tempEnd) {
+          const day = temp.getUTCDate().toString().padStart(2, "0");
+          const month = (temp.getUTCMonth() + 1).toString().padStart(2, "0");
+          const hour = temp.getUTCHours().toString().padStart(2, "0");
+          const label = `${day}/${month} ${hour}:00`;
+          dailyDataMap.set(label, {
+            date: label,
+            reviewCount: 0,
+            driverRatingSum: 0,
+            driverRatingCount: 0,
+            riderRatingSum: 0,
+            riderRatingCount: 0
+          });
+          temp.setUTCHours(temp.getUTCHours() + 2);
+        }
+      }
+    } else {
+      // Initialize daily buckets YYYY-MM-DD
+      const tempDate = toArgentina(startDate)
+      const tempEnd = toArgentina(endDate)
+      while (tempDate <= tempEnd) {
+        const dateStr = tempDate.toISOString().split("T")[0]
+        dailyDataMap.set(dateStr, {
+          date: dateStr,
+          reviewCount: 0,
+          driverRatingSum: 0,
+          driverRatingCount: 0,
+          riderRatingSum: 0,
+          riderRatingCount: 0
+        })
+        tempDate.setUTCDate(tempDate.getUTCDate() + 1)
+      }
     }
 
-    // Populate daily data based on completed_at or createdAt (using completed_at if completed, fallback to createdAt)
+    // Populate daily/hourly data based on completed_at or createdAt (using UTC to match buckets)
     reviewsForTrends.forEach((r: any) => {
-      const dateKey = (r.completed_at || r.createdAt).toISOString().split("T")[0]
+      const dateObj = r.completed_at || r.createdAt;
+      if (!dateObj) return;
+
+      let dateKey = "";
+      if (isHourlyGrouping) {
+        if (isSingleDay) {
+          const hour = toArgentina(dateObj).getUTCHours();
+          dateKey = `${hour.toString().padStart(2, "0")}:00`;
+        } else {
+          const argDate = toArgentina(dateObj);
+          const day = argDate.getUTCDate().toString().padStart(2, "0");
+          const month = (argDate.getUTCMonth() + 1).toString().padStart(2, "0");
+          const hourVal = argDate.getUTCHours();
+          const nearest2Hour = Math.floor(hourVal / 2) * 2;
+          dateKey = `${day}/${month} ${nearest2Hour.toString().padStart(2, "0")}:00`;
+        }
+      } else {
+        dateKey = toArgentina(dateObj).toISOString().split("T")[0];
+      }
+
       const dayObj = dailyDataMap.get(dateKey)
       if (dayObj) {
         if (r.completed_at) {
@@ -168,7 +271,7 @@ export async function GET(req: Request) {
     // 4. Worst Reviews (reseñas con rating ≤ 2, ordenadas de más reciente a más antigua)
     const worstReviewsRaw = await prisma.review.findMany({
       where: {
-        createdAt: {
+        completed_at: {
           gte: startDate,
           lte: endDate
         },
@@ -194,7 +297,7 @@ export async function GET(req: Request) {
     const worstReviews = worstReviewsRaw.map((r: any) => {
       const authorRoleMapped = r.author_role === "rider" ? "Rider" : r.author_role === "driver" ? "Driver" : "Admin"
       const recipientRoleMapped = r.target_role === "rider" ? "Rider" : r.target_role === "driver" ? "Driver" : "Admin"
-      const dateStr = (r.completed_at || r.createdAt).toISOString().split("T")[0]
+      const dateStr = toArgentina(r.completed_at || r.createdAt).toISOString().split("T")[0]
 
       return {
         id: r.id,
@@ -222,7 +325,7 @@ export async function GET(req: Request) {
       averageDriverRating,
       averagePassengerRating,
       reviewCompletionRate,
-      totalReviews: totalReviewsCreated,
+      totalReviews: totalReviewsCompleted,
       ratingTrends,
       worstReviews
     })
