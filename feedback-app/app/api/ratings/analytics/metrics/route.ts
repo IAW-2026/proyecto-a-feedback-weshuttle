@@ -117,7 +117,7 @@ export async function GET(req: Request) {
     })
 
     // 3. Rating Trends (un punto por día dentro del rango de fechas recibido)
-    const reviewsForTrends = await prisma.review.findMany({
+    const reviewsForTrends: any[] = await prisma.review.findMany({
       where: {
         OR: [
           {
@@ -269,7 +269,7 @@ export async function GET(req: Request) {
     }))
 
     // 4. Worst Reviews (reseñas con rating ≤ 2, ordenadas de más reciente a más antigua)
-    const worstReviewsRaw = await prisma.review.findMany({
+    const worstReviewsRaw: any[] = await prisma.review.findMany({
       where: {
         completed_at: {
           gte: startDate,
@@ -294,7 +294,7 @@ export async function GET(req: Request) {
       }
     })
 
-    const worstReviews = worstReviewsRaw.map((r: any) => {
+    const worstReviews: any[] = worstReviewsRaw.map((r: any) => {
       const authorRoleMapped = r.author_role === "rider" ? "Rider" : r.author_role === "driver" ? "Driver" : "Admin"
       const recipientRoleMapped = r.target_role === "rider" ? "Rider" : r.target_role === "driver" ? "Driver" : "Admin"
       const dateStr = toArgentina(r.completed_at || r.createdAt).toISOString().split("T")[0]
@@ -388,21 +388,21 @@ export async function GET(req: Request) {
       ...topRidersBadRaw.map((r) => r.target_user_id)
     ]))
 
-    const dbUsers = await prisma.user.findMany({
+    const dbUsers: any[] = await prisma.user.findMany({
       where: { id: { in: allUserIds } },
       select: { id: true, name: true }
     })
 
     const nameMap = new Map<string, string>()
-    dbUsers.forEach((u) => nameMap.set(u.id, u.name || "Usuario Desconocido"))
+    dbUsers.forEach((u: any) => nameMap.set(u.id, u.name || "Usuario Desconocido"))
 
     // Fetch representative comments for bad drivers
-    const worstDriverComments = await prisma.review.findMany({
+    const worstDriverComments: any[] = await prisma.review.findMany({
       where: {
         target_role: "driver",
         target_user_id: { in: topDriversBadRaw.map((d) => d.target_user_id) },
         rating: { lte: 2 },
-        comment: { not: null, not: "" },
+        comment: { not: null, notIn: [""] },
         completed_at: {
           gte: startDate,
           lte: endDate
@@ -419,12 +419,12 @@ export async function GET(req: Request) {
     })
 
     // Fetch representative comments for bad riders
-    const worstRiderComments = await prisma.review.findMany({
+    const worstRiderComments: any[] = await prisma.review.findMany({
       where: {
         target_role: "rider",
         target_user_id: { in: topRidersBadRaw.map((r) => r.target_user_id) },
         rating: { lte: 2 },
-        comment: { not: null, not: "" },
+        comment: { not: null, notIn: [""] },
         completed_at: {
           gte: startDate,
           lte: endDate
@@ -449,8 +449,8 @@ export async function GET(req: Request) {
 
     const topDriversBad = topDriversBadRaw.map((d) => {
       const comments = worstDriverComments
-        .filter((c) => c.target_user_id === d.target_user_id)
-        .map((c) => `(${c.rating}⭐) ${c.comment}`)
+        .filter((c: any) => c.target_user_id === d.target_user_id)
+        .map((c: any) => `(${c.rating}⭐) ${c.comment}`)
       return {
         userId: d.target_user_id,
         name: nameMap.get(d.target_user_id) || "Usuario Desconocido",
@@ -469,8 +469,8 @@ export async function GET(req: Request) {
 
     const topRidersBad = topRidersBadRaw.map((r) => {
       const comments = worstRiderComments
-        .filter((c) => c.target_user_id === r.target_user_id)
-        .map((c) => `(${c.rating}⭐) ${c.comment}`)
+        .filter((c: any) => c.target_user_id === r.target_user_id)
+        .map((c: any) => `(${c.rating}⭐) ${c.comment}`)
       return {
         userId: r.target_user_id,
         name: nameMap.get(r.target_user_id) || "Usuario Desconocido",
@@ -485,7 +485,7 @@ export async function GET(req: Request) {
     const dayOfWeekCounts = new Map<string, number>()
     dayNames.forEach((d) => dayOfWeekCounts.set(d, 0))
 
-    const completedReviewsInPeriod = await prisma.review.findMany({
+    const completedReviewsInPeriod: any[] = await prisma.review.findMany({
       where: {
         status: "COMPLETED",
         completed_at: {
@@ -499,7 +499,7 @@ export async function GET(req: Request) {
       }
     })
 
-    completedReviewsInPeriod.forEach((r) => {
+    completedReviewsInPeriod.forEach((r: any) => {
       if (r.completed_at) {
         const argDate = toArgentina(r.completed_at)
         const dayOfWeekIndex = argDate.getUTCDay()
@@ -529,7 +529,7 @@ export async function GET(req: Request) {
     const dayOfWeekRatings = new Map<string, { sum: number; count: number }>()
     dayNames.forEach((d) => dayOfWeekRatings.set(d, { sum: 0, count: 0 }))
 
-    completedReviewsInPeriod.forEach((r) => {
+    completedReviewsInPeriod.forEach((r: any) => {
       if (r.completed_at && r.rating !== null) {
         const argDate = toArgentina(r.completed_at)
         const dayName = dayNames[argDate.getUTCDay()]
@@ -556,18 +556,18 @@ export async function GET(req: Request) {
 
     // 8.2 Driver and Passenger Rating Trends (Temporal Progression)
     const midTime = startDate.getTime() + (endDate.getTime() - startDate.getTime()) / 2
-    const firstHalfDriverReviews = reviewsForTrends.filter((r) => {
+    const firstHalfDriverReviews = reviewsForTrends.filter((r: any) => {
       const d = r.completed_at || r.createdAt
       return r.target_role === "driver" && r.rating !== null && d && d.getTime() < midTime
     })
-    const secondHalfDriverReviews = reviewsForTrends.filter((r) => {
+    const secondHalfDriverReviews = reviewsForTrends.filter((r: any) => {
       const d = r.completed_at || r.createdAt
       return r.target_role === "driver" && r.rating !== null && d && d.getTime() >= midTime
     })
 
     if (firstHalfDriverReviews.length >= 3 && secondHalfDriverReviews.length >= 3) {
-      const avg1 = firstHalfDriverReviews.reduce((sum, r) => sum + r.rating!, 0) / firstHalfDriverReviews.length
-      const avg2 = secondHalfDriverReviews.reduce((sum, r) => sum + r.rating!, 0) / secondHalfDriverReviews.length
+      const avg1 = firstHalfDriverReviews.reduce((sum: number, r: any) => sum + r.rating!, 0) / firstHalfDriverReviews.length
+      const avg2 = secondHalfDriverReviews.reduce((sum: number, r: any) => sum + r.rating!, 0) / secondHalfDriverReviews.length
       if (avg2 < avg1 - 0.2) {
         businessInsights.push(`⚠️ Descenso de Calidad: La calificación promedio de los conductores bajó de ${avg1.toFixed(1)}⭐ a ${avg2.toFixed(1)}⭐ en la segunda mitad del período. Se sugiere revisar incidentes operativos recientes o el ingreso de nuevos choferes.`)
       } else if (avg2 > avg1 + 0.2) {
