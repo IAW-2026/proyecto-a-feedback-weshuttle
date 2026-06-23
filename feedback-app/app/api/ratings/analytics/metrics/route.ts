@@ -510,42 +510,9 @@ export async function GET(req: Request) {
 
     const dayOfWeekDistribution = Object.fromEntries(dayOfWeekCounts.entries())
 
-    // 8. Generate Dynamic Business Insights
+    // 8. Generate Dynamic Business Insights based on ratings
     const businessInsights: string[] = []
 
-    const activeDays = Array.from(dayOfWeekCounts.entries()).filter(([_, count]) => count > 0)
-    if (activeDays.length > 0) {
-      const totalActiveCount = activeDays.reduce((sum, [_, count]) => sum + count, 0)
-      const avgReviewsPerDay = totalActiveCount / activeDays.length
-
-      // Find the day with the absolute minimum activity
-      const minDay = activeDays.reduce((min, current) => current[1] < min[1] ? current : min, activeDays[0])
-      
-      // If the minimum day has less than 70% of the average daily activity, flag it
-      if (minDay[1] < avgReviewsPerDay * 0.7 && totalActiveCount >= 5) {
-        businessInsights.push(`💡 Patrón de Demanda: Los días ${minDay[0]} registran un volumen de viajes inusualmente bajo (solo ${minDay[1]} completados, un ${Math.round((minDay[1] / avgReviewsPerDay) * 100)}% del promedio semanal). Se sugiere incentivar reservas este día con beneficios o descuentos de Pool.`)
-      }
-
-      // Check if Thursday specifically is active and low (if minDay didn't trigger, check Jueves specifically)
-      const thursdayCount = dayOfWeekCounts.get("Jueves") || 0
-      if (thursdayCount > 0 && thursdayCount < avgReviewsPerDay * 0.75 && minDay[0] !== "Jueves") {
-        businessInsights.push(`💡 Patrón de Demanda: Se detecta menor frecuencia de viajes los días Jueves (${thursdayCount} viajes). Se sugiere una campaña dirigida para empleados de turno tarde.`)
-      }
-    }
-
-    // Insight: Critical Drivers Alert
-    const criticalDrivers = topDriversBad.filter((d) => d.avgRating !== null && d.avgRating <= 3.5)
-    if (criticalDrivers.length > 0) {
-      businessInsights.push(`⚠️ Calidad de Servicio: Se identificaron ${criticalDrivers.length} conductores con reputación crítica (≤ 3.5 estrellas) en este periodo. Se sugiere contactar a los conductores y auditar sus comentarios.`)
-    }
-
-    // Insight: Critical Passengers (Riders) Alert
-    const criticalRiders = topRidersBad.filter((r) => r.avgRating !== null && r.avgRating <= 3.5)
-    if (criticalRiders.length > 0) {
-      businessInsights.push(`⚠️ Convivencia en Pool: Hay ${criticalRiders.length} pasajeros reportados con calificaciones críticas por parte de los conductores. Se recomienda revisar su comportamiento para evitar conflictos en los traslados.`)
-    }
-
-    // Insight: Perception gap between Drivers and Riders
     const averageDriverRating = driverAvg._avg.rating !== null
       ? Number(driverAvg._avg.rating.toFixed(1))
       : null
@@ -554,21 +521,11 @@ export async function GET(req: Request) {
       ? Number(riderAvg._avg.rating.toFixed(1))
       : null
 
-    if (averageDriverRating !== null && averagePassengerRating !== null) {
-      const gap = Math.abs(averageDriverRating - averagePassengerRating)
-      if (gap > 0.4) {
-        const higher = averageDriverRating > averagePassengerRating ? "Conductores" : "Pasajeros"
-        const lower = averageDriverRating > averagePassengerRating ? "Pasajeros" : "Conductores"
-        businessInsights.push(`💡 Brecha de Percepción: Los ${higher} tienen mejor reputación promedio (${Math.max(averageDriverRating, averagePassengerRating)}) que los ${lower} (${Math.min(averageDriverRating, averagePassengerRating)}). Esto indica que un sector es percibido como más conflictivo.`)
-      }
-    }
+    const overallAvg = (averageDriverRating !== null && averagePassengerRating !== null)
+      ? (averageDriverRating + averagePassengerRating) / 2
+      : averageDriverRating || averagePassengerRating || 4.0
 
-    // Insight: UX/Feedback rate recommendation
-    if (reviewCompletionRate !== null && reviewCompletionRate < 50) {
-      businessInsights.push(`⚠️ Tasa de Respuesta Baja: Solo el ${reviewCompletionRate}% de las reseñas disponibles han sido completadas. Se aconseja agregar recordatorios push en la App al finalizar el viaje.`)
-    }
-
-    // Insight: Excellence Day
+    // 8.1 Excellence and Anomaly by Day of Week
     const dayOfWeekRatings = new Map<string, { sum: number; count: number }>()
     dayNames.forEach((d) => dayOfWeekRatings.set(d, { sum: 0, count: 0 }))
 
@@ -582,14 +539,98 @@ export async function GET(req: Request) {
     })
 
     const dayRatings = Array.from(dayOfWeekRatings.entries())
-      .filter(([_, data]) => data.count > 0)
+      .filter(([_, data]) => data.count >= 2)
       .map(([day, data]) => ({ day, avg: data.sum / data.count }))
 
     if (dayRatings.length > 0) {
       const maxRatedDay = dayRatings.reduce((max, cur) => cur.avg > max.avg ? cur : max, dayRatings[0])
       if (maxRatedDay.avg >= 4.5) {
-        businessInsights.push(`🌟 Excelencia Operativa: Los viajes completados los días ${maxRatedDay.day} registran la mayor satisfacción del cliente con un promedio de ${maxRatedDay.avg.toFixed(1)} estrellas.`)
+        businessInsights.push(`🌟 Excelencia Operativa: Los traslados los días ${maxRatedDay.day} registran la mayor satisfacción promedio con ${maxRatedDay.avg.toFixed(1)}⭐.`)
       }
+
+      const minRatedDay = dayRatings.reduce((min, cur) => cur.avg < min.avg ? cur : min, dayRatings[0])
+      if (minRatedDay.avg < 3.8 || (overallAvg && minRatedDay.avg < overallAvg - 0.5)) {
+        businessInsights.push(`⚠️ Baja Satisfacción Semanal: Los traslados de los días ${minRatedDay.day} registran una calificación promedio inusualmente baja de ${minRatedDay.avg.toFixed(1)}⭐. Se sugiere auditar el servicio en estos turnos.`)
+      }
+    }
+
+    // 8.2 Driver and Passenger Rating Trends (Temporal Progression)
+    const midTime = startDate.getTime() + (endDate.getTime() - startDate.getTime()) / 2
+    const firstHalfDriverReviews = reviewsForTrends.filter((r) => {
+      const d = r.completed_at || r.createdAt
+      return r.target_role === "driver" && r.rating !== null && d && d.getTime() < midTime
+    })
+    const secondHalfDriverReviews = reviewsForTrends.filter((r) => {
+      const d = r.completed_at || r.createdAt
+      return r.target_role === "driver" && r.rating !== null && d && d.getTime() >= midTime
+    })
+
+    if (firstHalfDriverReviews.length >= 3 && secondHalfDriverReviews.length >= 3) {
+      const avg1 = firstHalfDriverReviews.reduce((sum, r) => sum + r.rating!, 0) / firstHalfDriverReviews.length
+      const avg2 = secondHalfDriverReviews.reduce((sum, r) => sum + r.rating!, 0) / secondHalfDriverReviews.length
+      if (avg2 < avg1 - 0.2) {
+        businessInsights.push(`⚠️ Descenso de Calidad: La calificación promedio de los conductores bajó de ${avg1.toFixed(1)}⭐ a ${avg2.toFixed(1)}⭐ en la segunda mitad del período. Se sugiere revisar incidentes operativos recientes o el ingreso de nuevos choferes.`)
+      } else if (avg2 > avg1 + 0.2) {
+        businessInsights.push(`🌟 Mejora del Servicio: Excelente progreso de satisfacción de los conductores, subiendo de ${avg1.toFixed(1)}⭐ a ${avg2.toFixed(1)}⭐ en la segunda mitad del período analizado.`)
+      }
+    }
+
+    // 8.3 Perception Gap
+    if (averageDriverRating !== null && averagePassengerRating !== null) {
+      const gap = Math.abs(averageDriverRating - averagePassengerRating)
+      if (gap > 0.4) {
+        const higher = averageDriverRating > averagePassengerRating ? "Conductores" : "Pasajeros"
+        const lower = averageDriverRating > averagePassengerRating ? "Pasajeros" : "Conductores"
+        businessInsights.push(`💡 Brecha de Percepción: Los ${higher} tienen mejor reputación promedio (${Math.max(averageDriverRating, averagePassengerRating).toFixed(1)}⭐) que los ${lower} (${Math.min(averageDriverRating, averagePassengerRating).toFixed(1)}⭐). Esto indica que un sector es percibido como más conflictivo.`)
+      }
+    }
+
+    // 8.4 Critical Actors (Individual Anomalies)
+    const criticalDrivers = topDriversBad.filter((d) => d.avgRating !== null && d.avgRating <= 3.5)
+    if (criticalDrivers.length > 0) {
+      businessInsights.push(`⚠️ Calidad de Servicio: Se identificaron ${criticalDrivers.length} conductores con reputación crítica (≤ 3.5 estrellas) en este periodo. Se sugiere contactar a los conductores y auditar sus comentarios.`)
+    }
+
+    const outstandingDrivers = topDriversGood.filter((d) => d.avgRating !== null && d.avgRating >= 4.8 && d.reviewCount >= 3)
+    if (outstandingDrivers.length > 0) {
+      const names = outstandingDrivers.slice(0, 2).map((d) => d.name).join(" y ")
+      businessInsights.push(`🌟 Conductores Sobresalientes: ${names} lideran la calidad de servicio con calificaciones excepcionales (≥ 4.8⭐). Se sugiere considerar reconocimientos.`)
+    }
+
+    const badRiders = topRidersBad.filter((r) => r.avgRating !== null && r.avgRating <= 3.2 && r.reviewCount >= 2)
+    if (badRiders.length > 0) {
+      const names = badRiders.slice(0, 2).map((r) => r.name).join(" y ")
+      businessInsights.push(`⚠️ Alerta de Convivencia: Los pasajeros ${names} registran calificaciones críticas por parte de los choferes (≤ 3.2⭐). Se recomienda enviar una advertencia de conducta.`)
+    }
+
+    // 8.5 Comment / Sentiment Analysis on low-rated reviews (worstReviews)
+    const lowComments = worstReviews.map((r) => r.comment.toLowerCase())
+    const delayKeywords = ["tarde", "demora", "retras", "demoró", "espera", "impuntual", "horario"]
+    const drivingKeywords = ["manejo", "rápido", "rapido", "velocidad", "freno", "brusco", "peligro", "asusta", "cruza"]
+    const cleanKeywords = ["sucio", "olor", "limpieza", "limpio", "higiene", "mugre"]
+    const treatmentKeywords = ["trato", "maleducado", "maleducada", "grito", "insult", "atencion", "atención", "grosero"]
+
+    const delayCount = lowComments.filter((c) => delayKeywords.some((k) => c.includes(k))).length
+    const drivingCount = lowComments.filter((c) => drivingKeywords.some((k) => c.includes(k))).length
+    const cleanCount = lowComments.filter((c) => cleanKeywords.some((k) => c.includes(k))).length
+    const treatmentCount = lowComments.filter((c) => treatmentKeywords.some((k) => c.includes(k))).length
+
+    if (delayCount >= 2) {
+      businessInsights.push(`⚠️ Foco de Quejas (Demoras): Se detectaron ${delayCount} quejas sobre impuntualidad o retrasos en las calificaciones bajas de este período. Se sugiere revisar los márgenes de tolerancia de los itinerarios.`)
+    }
+    if (drivingCount >= 2) {
+      businessInsights.push(`⚠️ Foco de Quejas (Conducción): Se registraron ${drivingCount} menciones sobre velocidad o frenado brusco. Se recomienda alertar a los choferes sobre manejo seguro.`)
+    }
+    if (cleanCount >= 2) {
+      businessInsights.push(`⚠️ Foco de Quejas (Higiene): Hay menciones sobre el estado de limpieza o higiene de los vehículos. Se requiere auditar los estándares de limpieza antes de iniciar el pool.`)
+    }
+    if (treatmentCount >= 2) {
+      businessInsights.push(`⚠️ Foco de Quejas (Trato): Se reportaron comportamientos rudos o descorteses (${treatmentCount} menciones). Se sugiere capacitación de atención al cliente.`)
+    }
+
+    // 8.6 Completion Rate Warning
+    if (reviewCompletionRate !== null && reviewCompletionRate < 50) {
+      businessInsights.push(`⚠️ Tasa de Respuesta Baja: Solo el ${reviewCompletionRate}% de las reseñas disponibles han sido completadas. Se aconseja agregar recordatorios push en la App al finalizar el viaje.`)
     }
 
     // 9. Return JSON payload
