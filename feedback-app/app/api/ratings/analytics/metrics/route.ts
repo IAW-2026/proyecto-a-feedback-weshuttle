@@ -312,7 +312,240 @@ export async function GET(req: Request) {
       }
     })
 
-    // 5. Construct response
+    // 5. Calculate Top 5 Drivers (recipient role = driver, status = COMPLETED)
+    const driverGrouped = await prisma.review.groupBy({
+      by: ["target_user_id"],
+      _avg: { rating: true },
+      _count: { rating: true },
+      where: {
+        target_role: "driver",
+        status: "COMPLETED",
+        rating: { not: null },
+        completed_at: {
+          gte: startDate,
+          lte: endDate
+        }
+      }
+    })
+
+    const topDriversGoodRaw = [...driverGrouped]
+      .sort((a, b) => {
+        const avgA = a._avg.rating ?? 0
+        const avgB = b._avg.rating ?? 0
+        if (avgB !== avgA) return avgB - avgA
+        return b._count.rating - a._count.rating
+      })
+      .slice(0, 5)
+
+    const topDriversBadRaw = [...driverGrouped]
+      .sort((a, b) => {
+        const avgA = a._avg.rating ?? 5
+        const avgB = b._avg.rating ?? 5
+        if (avgA !== avgB) return avgA - avgB
+        return b._count.rating - a._count.rating
+      })
+      .slice(0, 5)
+
+    // 6. Calculate Top 5 Riders (recipient role = rider, status = COMPLETED)
+    const riderGrouped = await prisma.review.groupBy({
+      by: ["target_user_id"],
+      _avg: { rating: true },
+      _count: { rating: true },
+      where: {
+        target_role: "rider",
+        status: "COMPLETED",
+        rating: { not: null },
+        completed_at: {
+          gte: startDate,
+          lte: endDate
+        }
+      }
+    })
+
+    const topRidersGoodRaw = [...riderGrouped]
+      .sort((a, b) => {
+        const avgA = a._avg.rating ?? 0
+        const avgB = b._avg.rating ?? 0
+        if (avgB !== avgA) return avgB - avgA
+        return b._count.rating - a._count.rating
+      })
+      .slice(0, 5)
+
+    const topRidersBadRaw = [...riderGrouped]
+      .sort((a, b) => {
+        const avgA = a._avg.rating ?? 5
+        const avgB = b._avg.rating ?? 5
+        if (avgA !== avgB) return avgA - avgB
+        return b._count.rating - a._count.rating
+      })
+      .slice(0, 5)
+
+    // Resolve Names from local User table
+    const allUserIds = Array.from(new Set([
+      ...topDriversGoodRaw.map((d) => d.target_user_id),
+      ...topDriversBadRaw.map((d) => d.target_user_id),
+      ...topRidersGoodRaw.map((r) => r.target_user_id),
+      ...topRidersBadRaw.map((r) => r.target_user_id)
+    ]))
+
+    const dbUsers = await prisma.user.findMany({
+      where: { id: { in: allUserIds } },
+      select: { id: true, name: true }
+    })
+
+    const nameMap = new Map<string, string>()
+    dbUsers.forEach((u) => nameMap.set(u.id, u.name || "Usuario Desconocido"))
+
+    // Fetch representative comments for bad drivers
+    const worstDriverComments = await prisma.review.findMany({
+      where: {
+        target_role: "driver",
+        target_user_id: { in: topDriversBadRaw.map((d) => d.target_user_id) },
+        rating: { lte: 2 },
+        comment: { not: null, not: "" },
+        completed_at: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      select: {
+        target_user_id: true,
+        rating: true,
+        comment: true,
+        completed_at: true
+      },
+      orderBy: { completed_at: "desc" },
+      take: 15
+    })
+
+    // Fetch representative comments for bad riders
+    const worstRiderComments = await prisma.review.findMany({
+      where: {
+        target_role: "rider",
+        target_user_id: { in: topRidersBadRaw.map((r) => r.target_user_id) },
+        rating: { lte: 2 },
+        comment: { not: null, not: "" },
+        completed_at: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      select: {
+        target_user_id: true,
+        rating: true,
+        comment: true,
+        completed_at: true
+      },
+      orderBy: { completed_at: "desc" },
+      take: 15
+    })
+
+    const topDriversGood = topDriversGoodRaw.map((d) => ({
+      userId: d.target_user_id,
+      name: nameMap.get(d.target_user_id) || "Usuario Desconocido",
+      avgRating: d._avg.rating !== null ? Number(d._avg.rating.toFixed(2)) : null,
+      reviewCount: d._count.rating
+    }))
+
+    const topDriversBad = topDriversBadRaw.map((d) => {
+      const comments = worstDriverComments
+        .filter((c) => c.target_user_id === d.target_user_id)
+        .map((c) => `(${c.rating}⭐) ${c.comment}`)
+      return {
+        userId: d.target_user_id,
+        name: nameMap.get(d.target_user_id) || "Usuario Desconocido",
+        avgRating: d._avg.rating !== null ? Number(d._avg.rating.toFixed(2)) : null,
+        reviewCount: d._count.rating,
+        comments
+      }
+    })
+
+    const topRidersGood = topRidersGoodRaw.map((r) => ({
+      userId: r.target_user_id,
+      name: nameMap.get(r.target_user_id) || "Usuario Desconocido",
+      avgRating: r._avg.rating !== null ? Number(r._avg.rating.toFixed(2)) : null,
+      reviewCount: r._count.rating
+    }))
+
+    const topRidersBad = topRidersBadRaw.map((r) => {
+      const comments = worstRiderComments
+        .filter((c) => c.target_user_id === r.target_user_id)
+        .map((c) => `(${c.rating}⭐) ${c.comment}`)
+      return {
+        userId: r.target_user_id,
+        name: nameMap.get(r.target_user_id) || "Usuario Desconocido",
+        avgRating: r._avg.rating !== null ? Number(r._avg.rating.toFixed(2)) : null,
+        reviewCount: r._count.rating,
+        comments
+      }
+    })
+
+    // 7. Calculate day of week review distribution (based on completed_at in Argentina offset)
+    const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+    const dayOfWeekCounts = new Map<string, number>()
+    dayNames.forEach((d) => dayOfWeekCounts.set(d, 0))
+
+    const completedReviewsInPeriod = await prisma.review.findMany({
+      where: {
+        status: "COMPLETED",
+        completed_at: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      select: {
+        completed_at: true,
+        rating: true
+      }
+    })
+
+    completedReviewsInPeriod.forEach((r) => {
+      if (r.completed_at) {
+        const argDate = toArgentina(r.completed_at)
+        const dayOfWeekIndex = argDate.getUTCDay()
+        const dayName = dayNames[dayOfWeekIndex]
+        dayOfWeekCounts.set(dayName, (dayOfWeekCounts.get(dayName) || 0) + 1)
+      }
+    })
+
+    const dayOfWeekDistribution = Object.fromEntries(dayOfWeekCounts.entries())
+
+    // 8. Generate Dynamic Business Insights
+    const businessInsights: string[] = []
+
+    const activeDays = Array.from(dayOfWeekCounts.entries()).filter(([_, count]) => count > 0)
+    if (activeDays.length > 0) {
+      const totalActiveCount = activeDays.reduce((sum, [_, count]) => sum + count, 0)
+      const avgReviewsPerDay = totalActiveCount / activeDays.length
+
+      // Find the day with the absolute minimum activity
+      const minDay = activeDays.reduce((min, current) => current[1] < min[1] ? current : min, activeDays[0])
+      
+      // If the minimum day has less than 70% of the average daily activity, flag it
+      if (minDay[1] < avgReviewsPerDay * 0.7 && totalActiveCount >= 5) {
+        businessInsights.push(`💡 Patrón de Demanda: Los días ${minDay[0]} registran un volumen de viajes inusualmente bajo (solo ${minDay[1]} completados, un ${Math.round((minDay[1] / avgReviewsPerDay) * 100)}% del promedio semanal). Se sugiere incentivar reservas este día con beneficios o descuentos de Pool.`)
+      }
+
+      // Check if Thursday specifically is active and low (if minDay didn't trigger, check Jueves specifically)
+      const thursdayCount = dayOfWeekCounts.get("Jueves") || 0
+      if (thursdayCount > 0 && thursdayCount < avgReviewsPerDay * 0.75 && minDay[0] !== "Jueves") {
+        businessInsights.push(`💡 Patrón de Demanda: Se detecta menor frecuencia de viajes los días Jueves (${thursdayCount} viajes). Se sugiere una campaña dirigida para empleados de turno tarde.`)
+      }
+    }
+
+    // Insight: Critical Drivers Alert
+    const criticalDrivers = topDriversBad.filter((d) => d.avgRating !== null && d.avgRating <= 3.5)
+    if (criticalDrivers.length > 0) {
+      businessInsights.push(`⚠️ Calidad de Servicio: Se identificaron ${criticalDrivers.length} conductores con reputación crítica (≤ 3.5 estrellas) en este periodo. Se sugiere contactar a los conductores y auditar sus comentarios.`)
+    }
+
+    // Insight: Critical Passengers (Riders) Alert
+    const criticalRiders = topRidersBad.filter((r) => r.avgRating !== null && r.avgRating <= 3.5)
+    if (criticalRiders.length > 0) {
+      businessInsights.push(`⚠️ Convivencia en Pool: Hay ${criticalRiders.length} pasajeros reportados con calificaciones críticas por parte de los conductores. Se recomienda revisar su comportamiento para evitar conflictos en los traslados.`)
+    }
+
+    // Insight: Perception gap between Drivers and Riders
     const averageDriverRating = driverAvg._avg.rating !== null
       ? Number(driverAvg._avg.rating.toFixed(1))
       : null
@@ -321,13 +554,58 @@ export async function GET(req: Request) {
       ? Number(riderAvg._avg.rating.toFixed(1))
       : null
 
+    if (averageDriverRating !== null && averagePassengerRating !== null) {
+      const gap = Math.abs(averageDriverRating - averagePassengerRating)
+      if (gap > 0.4) {
+        const higher = averageDriverRating > averagePassengerRating ? "Conductores" : "Pasajeros"
+        const lower = averageDriverRating > averagePassengerRating ? "Pasajeros" : "Conductores"
+        businessInsights.push(`💡 Brecha de Percepción: Los ${higher} tienen mejor reputación promedio (${Math.max(averageDriverRating, averagePassengerRating)}) que los ${lower} (${Math.min(averageDriverRating, averagePassengerRating)}). Esto indica que un sector es percibido como más conflictivo.`)
+      }
+    }
+
+    // Insight: UX/Feedback rate recommendation
+    if (reviewCompletionRate !== null && reviewCompletionRate < 50) {
+      businessInsights.push(`⚠️ Tasa de Respuesta Baja: Solo el ${reviewCompletionRate}% de las reseñas disponibles han sido completadas. Se aconseja agregar recordatorios push en la App al finalizar el viaje.`)
+    }
+
+    // Insight: Excellence Day
+    const dayOfWeekRatings = new Map<string, { sum: number; count: number }>()
+    dayNames.forEach((d) => dayOfWeekRatings.set(d, { sum: 0, count: 0 }))
+
+    completedReviewsInPeriod.forEach((r) => {
+      if (r.completed_at && r.rating !== null) {
+        const argDate = toArgentina(r.completed_at)
+        const dayName = dayNames[argDate.getUTCDay()]
+        const current = dayOfWeekRatings.get(dayName)!
+        dayOfWeekRatings.set(dayName, { sum: current.sum + r.rating, count: current.count + 1 })
+      }
+    })
+
+    const dayRatings = Array.from(dayOfWeekRatings.entries())
+      .filter(([_, data]) => data.count > 0)
+      .map(([day, data]) => ({ day, avg: data.sum / data.count }))
+
+    if (dayRatings.length > 0) {
+      const maxRatedDay = dayRatings.reduce((max, cur) => cur.avg > max.avg ? cur : max, dayRatings[0])
+      if (maxRatedDay.avg >= 4.5) {
+        businessInsights.push(`🌟 Excelencia Operativa: Los viajes completados los días ${maxRatedDay.day} registran la mayor satisfacción del cliente con un promedio de ${maxRatedDay.avg.toFixed(1)} estrellas.`)
+      }
+    }
+
+    // 9. Return JSON payload
     return NextResponse.json({
       averageDriverRating,
       averagePassengerRating,
       reviewCompletionRate,
       totalReviews: totalReviewsCompleted,
       ratingTrends,
-      worstReviews
+      worstReviews,
+      topDriversGood,
+      topDriversBad,
+      topRidersGood,
+      topRidersBad,
+      dayOfWeekDistribution,
+      businessInsights
     })
 
   } catch (error) {
