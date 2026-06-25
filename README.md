@@ -56,3 +56,37 @@ En este ecosistema, la **Feedback App** centraliza el registro de calificaciones
 * **Server Actions Transaccionales:** La creación y actualización de reseñas se maneja mediante Server Actions que ejecutan transacciones de Prisma, asegurando la consistencia de los datos y la sincronización de perfiles de usuario.
 * **Gestión de Identidad:** Se utiliza **Clerk** para la autenticación, con una sincronización automática (upsert) en la base de datos de PostgreSQL (Neon) cada vez que un usuario interactúa con el sistema de feedback.
 * **Arquitectura y Stack Tecnológico:** Aplicación construida con **Next.js (App Router)**, **TypeScript** y **Tailwind CSS**. Se utiliza **Prisma ORM** para la gestión de datos sobre una base de datos relacional **PostgreSQL (Neon)**, y **Clerk** para el manejo de autenticación y roles de usuario.
+ 
+---
+ 
+## 6. Mejoras Implementadas (A comparación de la Etapa 2)
+ 
+### 1. Sistema de Reportes y Moderación Completo
+* **Categorías de Reportes (Enumerados):** `SPAM`, `CONTENIDO_OFENSIVO`, `INFORMACION_FALSA`, `DATOS_PERSONALES`, y `OTROS`.
+* **Efectos de la Moderación:**
+  * **Aceptado (ADMIN):** Si el Administrador aprueba el reporte (marcando el estado como `RESUELTO`), la reseña ofensiva se marca lógicamente como `REMOVED`, ocultándose de forma inmediata y definitiva del historial de los usuarios para preservar la moderación y la integridad de la reputación corporativa.
+  * **Rechazado (ADMIN):** Si el Administrador rechaza el reporte, la reseña permanece visible con su flujo normal y el reporte pasa a estado `RECHAZADO`. Sin embargo, para evitar abusos o spam de reportes, **esta reseña específica queda bloqueada y no se puede volver a reportar**.
+ 
+### 2. Búsqueda y Paginación URL con Resaltado de Texto
+* **Paginación y Filtro URL:** El estado de los inputs de búsqueda y el número de página actual se persisten en la URL (`?search=...&page=...`), garantizando que al refrescar la página o compartir el enlace se mantenga la vista exacta del usuario.
+* **Resaltado de Caracteres:** Los caracteres o palabras coincidentes se envuelven dinámicamente con una etiqueta `<mark>` aplicando estilos corporativos para localizar fácilmente las coincidencias visuales.
+* **Criterios de Búsqueda:**
+  * **En el Panel del Administrador (Admin):** Permite buscar reseñas y reportes filtrando por el **ID del Pool (Viaje)**, nombres o IDs de los autores, destinatarios o reporteros.
+  * **En el Panel del Pasajero (Rider):** Permite filtrar y buscar dentro de su historial de viajes y reseñas ingresando el **nombre del conductor (Driver)**.
+  * **En el Panel del Conductor (Driver):** Permite filtrar y buscar dentro de su historial ingresando el **nombre del pasajero (Rider)**.
+ 
+### 3. Detalles Estéticos e Integración Visual
+* **Notificaciones Toast:** Incorporación de avisos emergentes interactivos (Toast) para notificar de forma fluida el éxito o error en el envío de reseñas y moderación de reportes.
+* **Footer Corporativo:** Se agregó un pie de página unificado que complementa la experiencia visual de WeShuttle.
+* **Estandarización de Estilos:** Se alinearon los componentes, paleta de colores HSL, botones y contenedores visuales con las aplicaciones de los otros integrantes del equipo, logrando una identidad corporativa unificada y fluida a lo largo de todo el ecosistema WeShuttle.
+ 
+### 4. Visualización de Reseñas Enviadas
+* **Historial Completo:** Tanto conductores como pasajeros pueden consultar de forma organizada todas las reseñas que han enviado (emitido) a otros usuarios del sistema, permitiendo un seguimiento transparente de las evaluaciones otorgadas.
+ 
+---
+ 
+## 7. Limitaciones de la Aplicación
+ 
+* **Sincronización de Sesiones Clerk en un mismo navegador:**
+  Aunque las aplicaciones del ecosistema están completamente integradas a nivel de backend y transmiten datos en tiempo real, existe una limitación del lado del cliente al usar Clerk en un mismo navegador. 
+  Si el usuario inicia sesión en la *Rider App* con una cuenta y en la *Feedback App* con otra distinta (o viceversa), las cookies de sesión compartidas de Clerk en localhost o subdominios pueden colisionar, impidiendo captar el rol y usuario Clerk correcto al realizar redirecciones directas. Para pruebas multi-rol en un entorno local, se recomienda utilizar perfiles de navegador independientes o ventanas en modo incógnito.
