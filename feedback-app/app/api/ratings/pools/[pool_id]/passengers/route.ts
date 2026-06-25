@@ -120,7 +120,7 @@ function getMockPassengers() {
   return [
     {
       passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P',
-      passenger_name: 'Pasajero (Usuario de Clerk)',
+      passenger_name: 'Franco Gulino',
     },
     {
       passenger_user_id: 'user_rider_002',

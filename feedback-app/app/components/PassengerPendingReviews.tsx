@@ -7,11 +7,15 @@ type PendingReview = {
   id: string
   pool_id: string
   status: string
+  recipient: {
+    name: string | null
+  }
 }
 
 type PoolInfo = {
   destinationName: string
   departureTime: Date
+  driverName?: string
 }
 
 type Props = {
@@ -108,34 +112,34 @@ export default function PassengerPendingReviews({ reviews, poolDetails }: Props)
           const poolInfo = poolDetails[review.pool_id]
           return (
             <div key={review.id} className="ws-card ws-card-large">
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start justify-between mb-6 gap-4">
                 <div>
-                  <p className="text-sm text-neutral-500 mb-2">
-                    Viaje a: <span className="font-bold text-[var(--ws-midnight)]">{poolInfo?.destinationName ?? "Polo Petroquímico"}</span>
-                  </p>
+                  <p className="text-sm text-[var(--ws-midnight)] font-bold">CALIFICAR AL CONDUCTOR:</p>
                   <h3 className="text-2xl font-black tracking-tight text-[var(--ws-midnight)]">
-                    {poolInfo ? new Intl.DateTimeFormat("es-AR", {
+                    {poolInfo?.driverName || review.recipient.name || "Conductor"}
+                  </h3>
+                  <p className="text-xs text-[var(--ws-slate)] mt-2">
+                    Viaje a: <span className="font-semibold text-[var(--ws-midnight)]">{poolInfo?.destinationName ?? "Polo Petroquímico"}</span>
+                  </p>
+                  <p className="text-xs text-[var(--ws-slate)] mt-1">
+                    Fecha: <span className="font-semibold text-[var(--ws-midnight)]">{poolInfo ? new Intl.DateTimeFormat("es-AR", {
                       dateStyle: "medium",
                       timeStyle: "short",
                       timeZone: "America/Argentina/Buenos_Aires",
-                    }).format(new Date(poolInfo.departureTime)) : "Feedback del viaje"}
-                  </h3>
+                    }).format(new Date(poolInfo.departureTime)) : "Fecha del viaje"}</span>
+                  </p>
                 </div>
 
                 {review.status === "PRECREATED" ? (
-                  <div className="ws-pill ws-pill-info">
+                  <div className="ws-pill ws-pill-info shrink-0">
                     Precreated
                   </div>
                 ) : (
-                  <div className="ws-pill ws-pill-warning">
+                  <div className="ws-pill ws-pill-warning shrink-0">
                     Pending
                   </div>
                 )}
               </div>
-
-              <p className="text-[var(--ws-slate)] mb-6 leading-relaxed">
-                Tu viaje con destino a {poolInfo?.destinationName ?? "Polo Petroquímico"} está esperando feedback. Evaluá tu experiencia y ayudá a mejorar futuros viajes.
-              </p>
 
               <CompleteReviewForm reviewId={review.id} poolId={review.pool_id} status={review.status} />
             </div>

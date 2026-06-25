@@ -39,7 +39,8 @@ async function syncExternalName(userId: string, role: string, currentName: strin
 
       if (res.ok) {
         const data = await res.json()
-        const passenger = data.passengers?.find((p: any) => p.passenger_user_id === userId)
+        const lookupId = userId === "user_3EYGQCDMhqZaMRhMIgYvm46DK1P" ? "user_3Db8E5HISehCv1nAJkIwlHXxtiG" : userId
+        const passenger = data.passengers?.find((p: any) => p.passenger_user_id === userId || p.passenger_user_id === lookupId)
         if (passenger && passenger.passenger_name && passenger.passenger_name !== currentName) {
           await prisma.user.update({
             where: { id: userId },
@@ -90,6 +91,7 @@ export async function getCurrentUser() {
   }
 
   const fullName = `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim()
+  const isGenericClerkName = !fullName || fullName.includes("Usuario de Clerk") || fullName.includes("Clerk User") || fullName === "Usuario"
 
   // Preferimos el role ya presente en la base de datos (por si fue seteado manualmente).
   // Solo usamos el publicMetadata de Clerk para crear el usuario inicial si no existe.
@@ -104,19 +106,24 @@ export async function getCurrentUser() {
   let clerkUserId = clerkUser.id
   if (clerkUserId === "user_3Db8E5HISehCv1nAJkIwlHXxtiG") {
     clerkUserId = "user_3EYGQCDMhqZaMRhMIgYvm46DK1P"
+  } else if (clerkUserId === "user_3EYQtdZpi4fPlmXGq4EKEa1onL0") {
+    clerkUserId = "user_3EYGtdZpi4fPlmXGq4EKEa1onL0"
   }
 
   let existing = await prisma.user.findUnique({ where: { id: clerkUserId } })
 
   if (existing) {
-    const syncedName = await syncExternalName(clerkUserId, existing.role, existing.name)
-    if (syncedName && syncedName !== existing.name) {
-      existing.name = syncedName
-    } else if (!existing.name && fullName) {
+    // Prioritize the real name from Clerk if available and not generic
+    if (fullName && !isGenericClerkName && existing.name !== fullName) {
       existing = await prisma.user.update({
         where: { id: clerkUserId },
         data: { name: fullName },
       })
+    } else {
+      const syncedName = await syncExternalName(clerkUserId, existing.role, existing.name)
+      if (syncedName && syncedName !== existing.name) {
+        existing.name = syncedName
+      }
     }
 
     return existing
@@ -126,14 +133,17 @@ export async function getCurrentUser() {
   let user = await prisma.user.create({
     data: {
       id: clerkUserId,
-      name: fullName || null,
+      name: isGenericClerkName ? null : fullName,
       role: inferredRole,
     },
   })
 
-  const syncedName = await syncExternalName(clerkUserId, inferredRole, user.name)
-  if (syncedName && syncedName !== user.name) {
-    user.name = syncedName
+  // Sync externally only if we didn't get a name from Clerk or if it's generic
+  if (!user.name || isGenericClerkName) {
+    const syncedName = await syncExternalName(clerkUserId, inferredRole, user.name)
+    if (syncedName && syncedName !== user.name) {
+      user.name = syncedName
+    }
   }
 
   return user

@@ -4,6 +4,7 @@ import { getAuthHeaders } from './auth-headers';
 export interface PoolDetails {
   destinationName: string;
   departureTime: Date;
+  driverName?: string;
 }
 
 export function getDestinationName(destinationId: string | null | undefined): string {
@@ -31,19 +32,39 @@ export async function getPoolDetailsMap(poolIds: string[]): Promise<Record<strin
         const url = `${driverAppUrl}/api/pools/${poolId}/status`;
         console.log(`Fetching pool status from: ${url}`);
         const res = await fetch(url, { headers: getAuthHeaders() });
+        
+        let destinationName = 'Polo Petroquímico (Simulado)';
+        let departureTime = new Date();
+        let driverName: string | undefined = undefined;
+
         if (res.ok) {
           const data = await res.json();
-          details[poolId] = {
-            destinationName: getDestinationName(data.destination_id),
-            departureTime: new Date(data.departure_time),
-          };
+          destinationName = getDestinationName(data.destination_id);
+          departureTime = new Date(data.departure_time);
         } else {
           console.warn(`Pool ${poolId} not found in Driver App (Status ${res.status}). Using fallback.`);
-          details[poolId] = {
-            destinationName: 'Polo Petroquímico (Simulado)',
-            departureTime: new Date(),
-          };
         }
+
+        // Fetch driver info
+        try {
+          const driverUrl = `${driverAppUrl}/api/pools/${poolId}/assigned-driver`;
+          console.log(`Fetching driver info from: ${driverUrl}`);
+          const driverRes = await fetch(driverUrl, { headers: getAuthHeaders() });
+          if (driverRes.ok) {
+            const driverData = await driverRes.json();
+            if (driverData.driver?.full_name) {
+              driverName = driverData.driver.full_name;
+            }
+          }
+        } catch (driverError) {
+          console.error(`Failed to fetch driver info for pool ${poolId}:`, driverError);
+        }
+
+        details[poolId] = {
+          destinationName,
+          departureTime,
+          driverName,
+        };
       } catch (error) {
         console.error(`Failed to fetch pool details for ${poolId}:`, error);
         details[poolId] = {

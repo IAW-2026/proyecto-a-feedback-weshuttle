@@ -12,6 +12,10 @@ export default function Navbar({ role, displayName }: NavbarProps) {
 
   const { user, isSignedIn } = useUser()
 
+  const cleanDisplayName = (displayName === "Pasajero (Usuario de Clerk)" || displayName === "Conductor de Prueba (Clerk)" || displayName?.includes("Usuario de Clerk"))
+    ? null
+    : displayName
+
   const homeHref =
     role === "driver"
       ? "/dashboard/driver"
@@ -43,7 +47,7 @@ export default function Navbar({ role, displayName }: NavbarProps) {
             WeShuttle
           </span>
         </Link>
-
+ 
         {isSignedIn && (
 
           <div className="flex items-center gap-4">
@@ -51,11 +55,11 @@ export default function Navbar({ role, displayName }: NavbarProps) {
             <div className="text-right">
 
               <p className="text-sm font-bold text-[var(--ws-midnight)]">
-                {displayName?.trim() || user.firstName || "Usuario"}
+                {cleanDisplayName?.trim() || user?.firstName || user?.username || "Usuario"}
               </p>
 
               <p className="text-xs text-[var(--ws-slate)]">
-                {role || user.publicMetadata.role as string || "User"}
+                {role || user?.publicMetadata?.role as string || "User"}
               </p>
 
             </div>

@@ -72,7 +72,7 @@ export async function POST(req: Request) {
             {
               reservation_id: 'res_101',
               passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P',
-              passenger_name: 'Pasajero (Usuario de Clerk)',
+              passenger_name: 'Franco Gulino',
               reservation_status: 'PAID',
               pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
               destination_id: 'dest_polo_petroquimico',
@@ -135,7 +135,7 @@ export async function POST(req: Request) {
           {
             reservation_id: 'res_101',
             passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P',
-            passenger_name: 'Pasajero (Usuario de Clerk)',
+            passenger_name: 'Franco Gulino',
             reservation_status: 'PAID',
             pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
             destination_id: 'dest_polo_petroquimico',
@@ -224,21 +224,26 @@ export async function POST(req: Request) {
       let passengerName = passenger.passenger_name;
       if (passengerId === 'user_3Db8E5HISehCv1nAJkIwlHXxtiG') {
         passengerId = 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P';
-        passengerName = 'Pasajero (Usuario de Clerk)';
       }
 
       // Asegurar que el pasajero existe en nuestra base de datos local
-      await prisma.user.upsert({
-        where: { id: passengerId },
-        update: {
-          name: passengerName
-        },
-        create: {
-          id: passengerId,
-          name: passengerName,
-          role: 'rider',
-        },
-      });
+      const existingUser = await prisma.user.findUnique({ where: { id: passengerId } });
+      if (!existingUser) {
+        await prisma.user.create({
+          data: {
+            id: passengerId,
+            name: passengerName,
+            role: 'rider',
+          },
+        });
+      } else if (existingUser.name !== passengerName) {
+        await prisma.user.update({
+          where: { id: passengerId },
+          data: {
+            name: passengerName,
+          },
+        });
+      }
 
       // Reseña del pasajero al conductor
       await prisma.review.create({
