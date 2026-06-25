@@ -117,26 +117,5 @@ export async function GET(
 }
 
 function getMockPassengers() {
-  return [
-    {
-      passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P',
-      passenger_name: 'Franco Gulino',
-    },
-    {
-      passenger_user_id: 'user_rider_002',
-      passenger_name: 'Pasajero de Prueba 2',
-    },
-    {
-      passenger_user_id: 'user_rider_001',
-      passenger_name: 'Pasajero de Prueba 3',
-    },
-    {
-      passenger_user_id: 'user_rider_004',
-      passenger_name: 'Pasajero de Prueba 4',
-    },
-    {
-      passenger_user_id: 'user_rider_005',
-      passenger_name: 'Pasajero de Prueba 5',
-    }
-  ];
+  return [];
 }
