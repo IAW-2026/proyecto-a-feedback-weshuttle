@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getCurrentUser } from "@/lib/current-user"
+import { getAuthHeaders } from "@/lib/auth-headers"
 // Funciona como interruptor para cambiar el status de las reseñas de 
 // PRECREATED a PENDING, lo que habilita a los usuarios a completar las reseñas. 
 // Solo puede ser accedida por admins y drivers, y los drivers solo pueden activar reseñas de pools a los que tengan acceso (es decir, pools donde sean el autor de alguna reseña).
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
             console.log(`Sending notification to Rider App: ${url} for passenger ${targetId}`);
             const res = await fetch(url, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: getAuthHeaders({ "Content-Type": "application/json" }),
               body: JSON.stringify({
                 pool_id: body.pool_id,
                 passenger_user_id: targetId,
@@ -140,7 +141,7 @@ export async function POST(req: Request) {
         console.log(`Sending notification to Driver App: ${url} for driver ${poolDriverReview.author_user_id}`);
         const res = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
             pool_id: body.pool_id,
             driver_user_id: poolDriverReview.author_user_id,

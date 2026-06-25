@@ -3,6 +3,7 @@
 // Solo debería ser accedida por la Driver App.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthHeaders } from '@/lib/auth-headers';
 
 // Definimos una interfaz para el cuerpo de la solicitud,
 // basándonos en el contrato de GEMINI.MD
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
       try {
         const url = `${process.env.RIDER_APP_API_URL}/api/pools/${pool_id}/passengers?status=PAID`;
         console.log(`Fetching real passenger list from: ${url}`);
-        const riderAppResponse = await fetch(url);
+        const riderAppResponse = await fetch(url, { headers: getAuthHeaders() });
         if (!riderAppResponse.ok) {
           throw new Error(`Rider App responded with status: ${riderAppResponse.status}`);
         }
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
           passengers: [
             {
               reservation_id: 'res_101',
-              passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P', 
+              passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P',
               passenger_name: 'Pasajero (Usuario de Clerk)',
               reservation_status: 'PAID',
               pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
             },
             {
               reservation_id: 'res_104',
-              passenger_user_id: 'user_rider_004', 
+              passenger_user_id: 'user_rider_004',
               passenger_name: 'Pasajero de Prueba 4',
               reservation_status: 'PAID',
               pickup_point: { address: 'Sarmiento 900', lat: -38.703, lng: -62.201 },
@@ -133,7 +134,7 @@ export async function POST(req: Request) {
         passengers: [
           {
             reservation_id: 'res_101',
-            passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P', 
+            passenger_user_id: 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P',
             passenger_name: 'Pasajero (Usuario de Clerk)',
             reservation_status: 'PAID',
             pickup_point: { address: 'Av. Alem 1250', lat: -38.718, lng: -62.266 },
@@ -166,7 +167,7 @@ export async function POST(req: Request) {
           },
           {
             reservation_id: 'res_104',
-            passenger_user_id: 'user_rider_004', 
+            passenger_user_id: 'user_rider_004',
             passenger_name: 'Pasajero de Prueba 4',
             reservation_status: 'PAID',
             pickup_point: { address: 'Sarmiento 900', lat: -38.703, lng: -62.201 },
@@ -201,7 +202,7 @@ export async function POST(req: Request) {
       },
       create: {
         id: driver_user_id,
-        name: driver_name || "Conductor WeShuttle", 
+        name: driver_name || "Conductor WeShuttle",
         role: 'driver',
       },
     });
@@ -229,8 +230,8 @@ export async function POST(req: Request) {
       // Asegurar que el pasajero existe en nuestra base de datos local
       await prisma.user.upsert({
         where: { id: passengerId },
-        update: { 
-          name: passengerName 
+        update: {
+          name: passengerName
         },
         create: {
           id: passengerId,

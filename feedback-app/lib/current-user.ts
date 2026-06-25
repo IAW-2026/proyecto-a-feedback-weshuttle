@@ -1,5 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { prisma } from "./prisma"
+import { getAuthHeaders } from "./auth-headers"
 
 async function syncExternalName(userId: string, role: string, currentName: string | null) {
   // Buscar el pool_id del viaje más reciente del usuario a partir de sus reseñas
@@ -29,11 +30,11 @@ async function syncExternalName(userId: string, role: string, currentName: strin
       const riderAppUrl = process.env.RIDER_APP_API_URL || "https://proyecto-a-rider-weshuttle.vercel.app"
       const url = `${riderAppUrl}/api/pools/${poolId}/passengers?status=PAID`
       console.log(`Syncing rider name from: ${url}`)
-      
+
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 1500)
-      
-      const res = await fetch(url, { signal: controller.signal })
+
+      const res = await fetch(url, { signal: controller.signal, headers: getAuthHeaders() })
       clearTimeout(timeoutId)
 
       if (res.ok) {
@@ -55,11 +56,11 @@ async function syncExternalName(userId: string, role: string, currentName: strin
       const driverAppUrl = process.env.DRIVER_APP_API_URL || process.env.NEXT_PUBLIC_DRIVER_APP_URL || "https://proyecto-a-driver2-weshuttle.vercel.app"
       const url = `${driverAppUrl}/api/pools/${poolId}/assigned-driver`
       console.log(`Syncing driver name from: ${url}`)
-      
+
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 1500)
-      
-      const res = await fetch(url, { signal: controller.signal })
+
+      const res = await fetch(url, { signal: controller.signal, headers: getAuthHeaders() })
       clearTimeout(timeoutId)
 
       if (res.ok) {
@@ -93,9 +94,9 @@ export async function getCurrentUser() {
   // Preferimos el role ya presente en la base de datos (por si fue seteado manualmente).
   // Solo usamos el publicMetadata de Clerk para crear el usuario inicial si no existe.
   const rawRole = (clerkUser.publicMetadata?.role as string | undefined)?.toLowerCase()
-  
+
   // Validamos que el rol sea uno de los permitidos por el Enum de Prisma
-  const inferredRole = (rawRole === "driver" || rawRole === "admin" || rawRole === "rider") 
+  const inferredRole = (rawRole === "driver" || rawRole === "admin" || rawRole === "rider")
     ? (rawRole as "driver" | "admin" | "rider")
     : "rider"
 

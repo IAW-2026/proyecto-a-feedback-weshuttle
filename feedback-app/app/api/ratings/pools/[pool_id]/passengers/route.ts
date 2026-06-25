@@ -1,6 +1,7 @@
 // API Externa consumida por la Driver App para obtener las calificaciones promedio de los pasajeros de un pool.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthHeaders } from '@/lib/auth-headers';
 
 interface RiderAppPassengersResponse {
   pool_id: string;
@@ -29,7 +30,7 @@ export async function GET(
       try {
         const url = `${process.env.RIDER_APP_API_URL}/api/pools/${pool_id}/passengers`;
         console.log(`Fetching passenger list from Rider App: ${url}`);
-        const response = await fetch(url);
+        const response = await fetch(url, { headers: getAuthHeaders() });
         if (!response.ok) {
           throw new Error(`Rider App responded with status: ${response.status}`);
         }

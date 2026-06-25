@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { getAuthHeaders } from "@/lib/auth-headers"
 
 export async function checkAndActivatePoolsAction(userId: string): Promise<{ success: boolean; activatedCount: number; activePrecreatedPoolIds?: string[]; error?: string }> {
   try {
@@ -34,14 +35,14 @@ export async function checkAndActivatePoolsAction(userId: string): Promise<{ suc
       try {
         const url = `${driverAppUrl}/api/pools/${poolId}/status`
         console.log(`[AutoActivator] Checking pool ${poolId} status at: ${url}`)
-        
-        const res = await fetch(url)
+
+        const res = await fetch(url, { headers: getAuthHeaders() })
         if (res.ok) {
           const data = await res.json()
-          
+
           if (data.status === "COMPLETED") {
             console.log(`[AutoActivator] Pool ${poolId} is COMPLETED. Activating reviews in database...`)
-            
+
             // Activamos las reseñas del pool
             const updateResult = await prisma.review.updateMany({
               where: {
@@ -86,7 +87,7 @@ export async function checkAndActivatePoolsAction(userId: string): Promise<{ suc
                     console.log(`[AutoActivator] Notifying passenger ${targetId} at ${notifyUrl}`)
                     const response = await fetch(notifyUrl, {
                       method: "POST",
-                      headers: { "Content-Type": "application/json" },
+                      headers: getAuthHeaders({ "Content-Type": "application/json" }),
                       body: JSON.stringify({
                         pool_id: poolId,
                         passenger_user_id: targetId,
@@ -110,7 +111,7 @@ export async function checkAndActivatePoolsAction(userId: string): Promise<{ suc
                 console.log(`[AutoActivator] Notifying driver ${poolDriverReview.author_user_id} at ${notifyUrl}`)
                 const response = await fetch(notifyUrl, {
                   method: "POST",
-                  headers: { "Content-Type": "application/json" },
+                  headers: getAuthHeaders({ "Content-Type": "application/json" }),
                   body: JSON.stringify({
                     pool_id: poolId,
                     driver_user_id: poolDriverReview.author_user_id,

@@ -1,4 +1,6 @@
 // Helper to fetch pool details from Driver App API
+import { getAuthHeaders } from './auth-headers';
+
 export interface PoolDetails {
   destinationName: string;
   departureTime: Date;
@@ -28,7 +30,7 @@ export async function getPoolDetailsMap(poolIds: string[]): Promise<Record<strin
       try {
         const url = `${driverAppUrl}/api/pools/${poolId}/status`;
         console.log(`Fetching pool status from: ${url}`);
-        const res = await fetch(url);
+        const res = await fetch(url, { headers: getAuthHeaders() });
         if (res.ok) {
           const data = await res.json();
           details[poolId] = {
