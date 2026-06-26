@@ -83,6 +83,13 @@ En este ecosistema, la **Feedback App** centraliza el registro de calificaciones
 ### 4. Visualización de Reseñas Enviadas
 * **Historial Completo:** Tanto conductores como pasajeros pueden consultar de forma organizada todas las reseñas que han enviado (emitido) a otros usuarios del sistema, permitiendo un seguimiento transparente de las evaluaciones otorgadas.
  
+### 5. Exportación de Reportes y Reseñas a Excel (.xlsx)
+* **Resolución del Problema:** Habilita la descarga local de listados críticos de datos (reportes y reseñas) directamente al dispositivo del usuario. Resuelve la necesidad de contar con un soporte offline para análisis de datos externo, auditorías rápidas y visualización clara fuera de la plataforma.
+* **Características:**
+  * **Carga Eficiente:** La librería `exceljs` se importa de manera dinámica en el cliente únicamente al presionar el botón de exportación, evitando sobrecargar el bundle inicial del sitio.
+  * **Diseño Estilizado Premium:** Reportes con cabeceras corporativas azul oscuro, cuadrículas definidas, alternancia de filas (zebra striping), escalado condicional de colores para calificaciones y estados, y ajuste automático del tamaño de celda según el contenido.
+  * **Interfaz Contextual:** Botones con iconos y descripciones que cambian de forma dinámica adaptándose al contexto de la pestaña activa (ej. *Todos*, *Pasajeros*, *Conductores*, *Enviadas* o *Recibidas*).
+ 
 ---
  
 ## 7. Limitaciones de la Aplicación

@@ -21,6 +21,108 @@ interface Props {
   initialReviews: ReviewWithRecipient[]
 }
 
+async function downloadXLSX(filename: string, sheetName: string, headers: string[], rows: any[][]) {
+  const ExcelJS = (await import("exceljs")).default;
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(sheetName);
+
+  // Configure columns and estimated widths
+  worksheet.columns = headers.map((h, i) => {
+    let width = 16;
+    if (h === "Comentario") width = 45;
+    else if (h.includes("ID") || h.includes("Reseña")) width = 22;
+    else if (h.includes("Fecha")) width = 20;
+    else if (h.includes("Nombre") || h.includes("Conductor")) width = 22;
+    return {
+      header: h,
+      key: `col_${i}`,
+      width: width
+    };
+  });
+
+  // Add rows
+  worksheet.addRows(rows);
+
+  // Style header row
+  const headerRow = worksheet.getRow(1);
+  headerRow.height = 28;
+  headerRow.eachCell((cell) => {
+    cell.font = { name: "Segoe UI", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF0F172A" } // Midnight Blue
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  });
+
+  // Style data rows
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const isEven = rowNumber % 2 === 0;
+    row.height = 22;
+
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      // Zebra striping
+      if (isEven) {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF8FAFC" }
+        };
+      }
+
+      // Thin borders
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFE2E8F0" } },
+        left: { style: "thin", color: { argb: "FFE2E8F0" } },
+        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+        right: { style: "thin", color: { argb: "FFE2E8F0" } }
+      };
+
+      cell.font = { name: "Segoe UI", size: 10 };
+
+      // Formatting based on header type
+      const headerName = headers[colNumber - 1];
+      if (headerName === "Comentario") {
+        cell.alignment = { wrapText: true, vertical: "top", horizontal: "left" };
+        const textLen = cell.value ? String(cell.value).length : 0;
+        if (textLen > 45) {
+          const approxLines = Math.ceil(textLen / 40);
+          row.height = Math.max(row.height || 22, approxLines * 16 + 10);
+        }
+      } else {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      }
+
+      // Format rating with star visual representation
+      if (headerName === "Calificación" && cell.value !== null && cell.value !== undefined) {
+        const ratingVal = Number(cell.value);
+        if (!isNaN(ratingVal)) {
+          cell.value = `${ratingVal.toFixed(1)} ★`;
+          if (ratingVal >= 4.0) {
+            cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FF15803D" } };
+          } else if (ratingVal <= 2.0) {
+            cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FFB91C1C" } };
+          }
+        }
+      }
+    });
+  });
+
+  // Generate buffer and download
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 const PAGE_SIZE = 3
 
 function escapeRegExp(string: string) {
@@ -106,24 +208,66 @@ export default function PassengerSentReviewsList({ initialReviews }: Props) {
   const currentPage = Math.min(Math.max(Number(pageParam) || 1, 1), totalPages)
   const paginatedReviews = filteredReviews.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
+  const handleExportAllReviews = () => {
+    const headers = [
+      "ID Reseña",
+      "Fecha Creación",
+      "Pool ID",
+      "Conductor Destinatario",
+      "Calificación",
+      "Comentario"
+    ];
+
+    const rows = filteredReviews.map((r) => [
+      r.id,
+      new Date(r.createdAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" }),
+      r.pool_id,
+      r.recipient?.name || r.recipient?.id || "Conductor",
+      r.rating !== null ? Number(r.rating) : null,
+      r.comment || ""
+    ]);
+
+    const formattedDate = new Date()
+      .toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })
+      .replace(/\//g, "-");
+    const filename = searchQuery.trim()
+      ? `resenas_enviadas_filtradas_${searchQuery.trim().replace(/\s+/g, "_")}_${formattedDate}.xlsx`
+      : `todas_las_resenas_enviadas_${formattedDate}.xlsx`;
+
+    downloadXLSX(filename, "Reseñas Enviadas", headers, rows);
+  };
+
   return (
     <div className="space-y-6">
       {/* TOP CONTROLS (SEARCH & PAGINATION) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {/* SEARCH BAR */}
-        <div className="relative w-full sm:max-w-md">
-          <input
-            type="text"
-            placeholder="Buscar por nombre de conductor..."
-            value={searchInput}
-            onChange={e => handleSearchChange(e.target.value)}
-            className="ws-input pl-10 pr-4 py-2 text-sm w-full"
-          />
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+        {/* SEARCH BAR & EXPORT */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:max-w-xl">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Buscar por nombre de conductor..."
+              value={searchInput}
+              onChange={e => handleSearchChange(e.target.value)}
+              className="ws-input pl-10 pr-4 py-2 text-sm w-full"
+            />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
           </div>
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-md border border-[var(--ws-outline)] bg-[var(--ws-info-soft)] text-[var(--ws-midnight)] px-4 py-2 h-11 text-sm font-bold hover:bg-neutral-100 transition-all cursor-pointer whitespace-nowrap"
+            onClick={handleExportAllReviews}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2" style={{ color: "#16A34A" }}>
+              <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M3 9h18M9 3v18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Exportar todas las reseñas enviadas
+          </button>
         </div>
 
         {/* PAGINATION */}

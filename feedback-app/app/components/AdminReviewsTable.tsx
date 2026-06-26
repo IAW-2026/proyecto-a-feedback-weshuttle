@@ -188,6 +188,119 @@ function groupReviewsByTrip(reviewsList: Review[]) {
   return Array.from(groups.values()).sort((a, b) => b.tripDate.getTime() - a.tripDate.getTime())
 }
 
+async function downloadXLSX(filename: string, sheetName: string, headers: string[], rows: any[][]) {
+  const ExcelJS = (await import("exceljs")).default;
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(sheetName);
+
+  // Configure columns and estimated widths
+  worksheet.columns = headers.map((h, i) => {
+    let width = 16;
+    if (h === "Comentario") width = 45;
+    else if (h.includes("ID") || h.includes("Reseña")) width = 22;
+    else if (h.includes("Fecha")) width = 20;
+    else if (h.includes("Nombre")) width = 22;
+    return {
+      header: h,
+      key: `col_${i}`,
+      width: width
+    };
+  });
+
+  // Add rows
+  worksheet.addRows(rows);
+
+  // Style header row
+  const headerRow = worksheet.getRow(1);
+  headerRow.height = 28;
+  headerRow.eachCell((cell) => {
+    cell.font = { name: "Segoe UI", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF0F172A" } // Midnight Blue
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  });
+
+  // Style data rows
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const isEven = rowNumber % 2 === 0;
+    row.height = 22;
+
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      // Zebra striping
+      if (isEven) {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF8FAFC" }
+        };
+      }
+
+      // Thin borders
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFE2E8F0" } },
+        left: { style: "thin", color: { argb: "FFE2E8F0" } },
+        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+        right: { style: "thin", color: { argb: "FFE2E8F0" } }
+      };
+
+      cell.font = { name: "Segoe UI", size: 10 };
+
+      // Formatting based on header type
+      const headerName = headers[colNumber - 1];
+      if (headerName === "Comentario") {
+        cell.alignment = { wrapText: true, vertical: "top", horizontal: "left" };
+        const textLen = cell.value ? String(cell.value).length : 0;
+        if (textLen > 45) {
+          const approxLines = Math.ceil(textLen / 40);
+          row.height = Math.max(row.height || 22, approxLines * 16 + 10);
+        }
+      } else {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      }
+
+      // Format rating with star visual representation
+      if (headerName === "Calificación" && cell.value !== null && cell.value !== undefined) {
+        const ratingVal = Number(cell.value);
+        if (!isNaN(ratingVal)) {
+          cell.value = `${ratingVal.toFixed(1)} ★`;
+          if (ratingVal >= 4.0) {
+            cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FF15803D" } };
+          } else if (ratingVal <= 2.0) {
+            cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FFB91C1C" } };
+          }
+        }
+      }
+
+      // Estilo visual del Estado
+      if (headerName === "Estado" && cell.value) {
+        if (cell.value === "COMPLETED") {
+          cell.font = { name: "Segoe UI", size: 9, bold: true, color: { argb: "FF15803D" } };
+        } else if (cell.value === "PENDING") {
+          cell.font = { name: "Segoe UI", size: 9, bold: true, color: { argb: "FFB45309" } };
+        } else if (cell.value === "PRECREATED") {
+          cell.font = { name: "Segoe UI", size: 9, italic: true, color: { argb: "FF64748B" } };
+        }
+      }
+    });
+  });
+
+  // Generate buffer and download
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 type Props = {
   initialReviews: any[]
   createReviewAction: (input: CreateAdminReviewInput) => Promise<CreatedAdminReview>
@@ -252,6 +365,91 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
     onConfirm?: () => void;
     variant: 'danger' | 'info' | 'success';
   }>({ isOpen: false, title: '', description: '', variant: 'info' });
+
+  const handleExportTripReviews = (trip: TripGroup) => {
+    const headers = [
+      "ID Reseña",
+      "Fecha Creación",
+      "Pool ID",
+      "Reserva ID",
+      "Autor ID",
+      "Autor Nombre",
+      "Autor Rol",
+      "Destinatario ID",
+      "Destinatario Nombre",
+      "Destinatario Rol",
+      "Calificación",
+      "Estado",
+      "Comentario"
+    ];
+
+    const rows = trip.reviews.map((r: Review) => [
+      r.id,
+      new Date(r.createdAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" }),
+      r.pool_id,
+      r.reservation_id || "",
+      r.author_user_id,
+      r.author?.name || "",
+      r.author_role,
+      r.target_user_id || "",
+      r.recipient?.name || "",
+      r.recipient_role || "",
+      r.rating !== null ? Number(r.rating) : null,
+      r.status,
+      r.comment || ""
+    ]);
+
+    const formattedDate = new Date(trip.tripDate)
+      .toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })
+      .replace(/\//g, "-");
+    const filename = `resenas_viaje_${trip.poolId}_${formattedDate}.xlsx`;
+    downloadXLSX(filename, `Viaje ${trip.poolId.substring(0, 8)}`, headers, rows);
+  };
+
+  const handleExportAllFilteredReviews = () => {
+    const headers = [
+      "ID Reseña",
+      "Fecha Creación",
+      "Pool ID",
+      "Reserva ID",
+      "Autor ID",
+      "Autor Nombre",
+      "Autor Rol",
+      "Destinatario ID",
+      "Destinatario Nombre",
+      "Destinatario Rol",
+      "Calificación",
+      "Estado",
+      "Comentario"
+    ];
+
+    const allReviews = grouped.flatMap((trip) => trip.reviews);
+
+    const rows = allReviews.map((r: Review) => [
+      r.id,
+      new Date(r.createdAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" }),
+      r.pool_id,
+      r.reservation_id || "",
+      r.author_user_id,
+      r.author?.name || "",
+      r.author_role,
+      r.target_user_id || "",
+      r.recipient?.name || "",
+      r.recipient_role || "",
+      r.rating !== null ? Number(r.rating) : null,
+      r.status,
+      r.comment || ""
+    ]);
+
+    const formattedDate = new Date()
+      .toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })
+      .replace(/\//g, "-");
+    const filename = searchQuery.trim()
+      ? `resenas_filtradas_${searchQuery.trim().replace(/\s+/g, "_")}_${formattedDate}.xlsx`
+      : `todas_las_resenas_${formattedDate}.xlsx`;
+
+    downloadXLSX(filename, "Todas las Reseñas", headers, rows);
+  };
 
   const openModal = (r: Review) => {
     setSelected(r)
@@ -470,6 +668,19 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
               </svg>
             </div>
           </div>
+          <div>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-md border border-[var(--ws-outline)] bg-[var(--ws-info-soft)] text-[var(--ws-midnight)] px-4 py-2 text-sm font-bold hover:bg-neutral-100 transition-all cursor-pointer"
+              onClick={handleExportAllFilteredReviews}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2" style={{ color: "#16A34A" }}>
+                <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M3 9h18M9 3v18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Exportar Todo a Excel
+            </button>
+          </div>
         </div>
 
         {paginatedTrips.length === 0 ? (
@@ -519,6 +730,17 @@ export default function AdminReviewsTable({ initialReviews, createReviewAction }
                         onClick={() => openCreateModal(trip)}
                       >
                         Crear reseña
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center rounded-md border border-[var(--ws-outline)] bg-white px-4 py-2 text-sm font-semibold text-[var(--ws-midnight)] hover:bg-neutral-100"
+                        onClick={() => handleExportTripReviews(trip)}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2" style={{ color: "#16A34A" }}>
+                          <path d="M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M3 9h18M9 3v18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Exportar a Excel
                       </button>
                     </div>
 
