@@ -1,72 +1,37 @@
 import 'dotenv/config'
 import { prisma } from '../lib/prisma.js'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-// Definición de conductores de WeShuttle
-const seedDrivers = [
-  { id: "user_3EYQtdZpi4fPlmXGq4EKEa1onL0", name: "Conductor de Prueba (Clerk)" },
-  { id: "user_3EZBdD7n2UefoPdzP4FS1Unf864", name: "Juliana Pag" },
-  { id: "user_3EJohyoiSblh2utnRB6SrnhumBH", name: "John Sebastien Bass" },
-  { id: "user_driver_01", name: "Conductor de Prueba (user_driver_01)" },
-  { id: "user_driver_02", name: "Pedro Picapiedra" },
-  { id: "user_driver_03", name: "Pablo Mármol" }
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// 1. Mapeo completo de Conductores (ID interno en Driver App -> Clerk ID y Nombre)
+const driverMapping: Record<string, { clerk: string; name: string }> = {
+  'drv_juliana_01': { clerk: 'user_3EZoK6pR0SB0EYHvCh3rpEcbNWT', name: 'Juliana Pagani' },
+  'drv_carlos_02': { clerk: 'user_driver_01', name: 'Carlos Gómez' },
+  'drv_pedro_03': { clerk: 'user_driver_02', name: 'Pedro Picapiedra' },
+  'drv_john_04': { clerk: 'user_3EJohyoiSblh2utnRB6SrnhumBH', name: 'John Sebastien Bass' },
+  'drv_juan_05': { clerk: 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0', name: 'Juan Lopez' },
+  'drv_juliana_pag': { clerk: 'user_3EZBdD7n2UefoPdzP4FS1Unf864', name: 'Juliana Pag' },
+  'drv_nicolas_gonzalez': { clerk: 'user_3FNQPo24yXJr7Pc39XREgbA1lfY', name: 'Nicolas Gonzalez' },
+  'drv_pendiente': { clerk: 'user_clerk_driver_pendiente_999', name: 'Carlos Gómez (Chofer Pendiente)' },
+  'drv_rechazado': { clerk: 'user_clerk_driver_rechazado_000', name: 'Esteban Quito (Rechazado)' }
+}
+
+const additionalNames = [
+  'Sofia Rodriguez', 'Mateo Gimenez', 'Valentina Perez', 'Lucas Silva',
+  'Martina Diaz', 'Thiago Gonzalez', 'Maria Alvarez', 'Bautista Romero',
+  'Zoe Fernandez', 'Joaquin Ruiz', 'Camila Gomez', 'Benjamin Ledesma',
+  'Catalina Herrera', 'Felipe Medina', 'Isabella Castro', 'Juan Morales'
 ]
 
-// Pasajeros reales y de prueba del seed de Rider (Franco)
-const francoPassengers = [
-  {
-    id: "cmqltaxps000004jmzfim60c8",
-    clerk_user_id: "user_3EYQtdZpi4fPlmXGq4EKEa1onL0",
-    full_name: "Juan Bassi",
-    role: "driver" // Mantener su rol de conductor en feedback-app
-  },
-  {
-    id: "cmqlx8ac9000404lbr1d2wqpb",
-    clerk_user_id: "user_3Dwjs2tNYWJq2r3WfN06m9gm533",
-    full_name: "Juan",
-    role: "rider"
-  },
-  {
-    id: "cmqn73h9l000004jpt5hylq5k",
-    clerk_user_id: "user_3FQc2n3EzY9IuARMfRHIV6zL6LI",
-    full_name: "Kevin Gomez",
-    role: "rider"
-  },
-  {
-    id: "cmqlgbvkw0000fey105sv0wor",
-    clerk_user_id: "user_3EYGQCDMhqZaMRhMIgYvm46DK1P",
-    full_name: "Juan Perez",
-    role: "rider"
-  },
-  {
-    id: "cmqnyzfh90000svy1bwymln5c",
-    clerk_user_id: "user_3EYGNPDkh6Nqg38YBdCb0TeAdNi",
-    full_name: "Franco Gulino",
-    role: "admin" // Mantener su rol de admin en feedback-app
-  },
-  {
-    id: "cmqlor03c000004l8hlvnss0i",
-    clerk_user_id: "user_3Db8E5HISehCv1nAJkIwlHXxtiG",
-    full_name: "Gulino Franco",
-    role: "rider"
-  },
-  {
-    id: "cmqlptvne000204l1ahzsve8j",
-    clerk_user_id: "user_3EZBdD7n2UefoPdzP4FS1Unf864",
-    full_name: "Santiago Lopez",
-    role: "driver" // Mantener su rol de conductor en feedback-app
-  }
-]
-
-// Mapeo de pools a conductores para que sean consistentes
-const poolDriverMap: Record<string, string> = {
-  'pool_lunes_1': 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0',
-  'pool_lunes_2': 'user_3EZBdD7n2UefoPdzP4FS1Unf864',
-  'pool_viernes_1': 'user_3EJohyoiSblh2utnRB6SrnhumBH',
-  'pool_viernes_2': 'user_driver_01',
-  'pool_sabado_1': 'user_driver_02',
-  'pool_sabado_2': 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0',
-  'pool_domingo_1': 'user_3EZBdD7n2UefoPdzP4FS1Unf864',
-  'pool_domingo_2': 'user_3EJohyoiSblh2utnRB6SrnhumBH'
+for (let i = 0; i < additionalNames.length; i++) {
+  const num = i + 6
+  const driverId = `drv_gen_${num.toString().padStart(2, '0')}`
+  const clerkId = `user_gen_driver_${num.toString().padStart(2, '0')}`
+  driverMapping[driverId] = { clerk: clerkId, name: additionalNames[i] }
 }
 
 // Helpers para obtener calificación y comentarios determinísticos de Rider a Conductor
@@ -108,7 +73,7 @@ function getRiderToDriverRatingAndComment(driverId: string, index: number) {
     "No me sentí seguro en el viaje por maniobras bruscas.",
     "El chofer fue descortés al hacer preguntas personales.",
     "Llegamos tarde al destino por desvíos innecesarios.",
-    "No encendió el aire acondicionado y hacía muchísimo calor.",
+    "No me sentí seguro al viajar debido a las velocidades elevadas.",
     "Mala actitud del conductor ante una consulta sobre la ruta.",
     "El viaje fue muy estresante por el estilo de conducción."
   ]
@@ -128,6 +93,7 @@ function getRiderToDriverRatingAndComment(driverId: string, index: number) {
   ]
 
   const rIdx = index % 10
+  // Mapeamos el clerk ID para decidir el tono de la reseña
   if (driverId === 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0') {
     return { rating: excellentRatings[rIdx], comment: excellentComments[rIdx] }
   } else if (driverId === 'user_3EZBdD7n2UefoPdzP4FS1Unf864') {
@@ -195,44 +161,67 @@ function getDriverToRiderRatingAndComment(passengerId: string, index: number) {
 }
 
 async function main() {
+  console.log('🌱 Iniciando la precarga de datos (Seeding) consistente desde seed-manifest.json...')
+
+  // 1. Lectura del seed-manifest.json
+  let manifestPath = path.join(__dirname, '../../seed-manifest.json')
+  if (!fs.existsSync(manifestPath)) {
+    manifestPath = path.join(__dirname, '../seed-manifest.json')
+    if (!fs.existsSync(manifestPath)) {
+      throw new Error(`No se encontró el archivo seed-manifest.json en la ruta: ${manifestPath}`)
+    }
+  }
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+  const { passengers = [], reservations = [] } = manifest
+
+  console.log(`📖 Manifiesto leído: ${passengers.length} pasajeros, ${reservations.length} reservas.`)
+
+  // 2. Limpieza total de la base de datos (con orden estricto de claves foráneas)
   console.log('🧹 Limpiando base de datos para el seed...')
-  
-  // Limpiamos únicamente datos de seed anteriores para mantener idempotencia
-  await prisma.review.deleteMany({
-    where: {
-      id: {
-        startsWith: 'seed_review_',
-      },
-    },
-  })
+  await prisma.report.deleteMany({})
+  await prisma.review.deleteMany({})
+  await prisma.ratingAverage.deleteMany({})
+  await prisma.user.deleteMany({})
+  console.log('🗑️ Base de datos limpia.')
 
-  await prisma.ratingAverage.deleteMany()
-
-  console.log('🌱 Inyectando conductores...')
-  for (const drv of seedDrivers) {
-    await prisma.user.upsert({
-      where: { id: drv.id },
-      update: { name: drv.name },
-      create: {
-        id: drv.id,
-        name: drv.name,
+  // 3. Creación/Upsert de Conductores en la tabla User de Feedback App
+  console.log('🌱 Creando conductores...')
+  for (const driverId of Object.keys(driverMapping)) {
+    const details = driverMapping[driverId]
+    await prisma.user.create({
+      data: {
+        id: details.clerk,
+        name: details.name,
         role: 'driver',
-      },
+      }
     })
   }
+  console.log(`👤 Conductores creados (${Object.keys(driverMapping).length} en total).`)
 
-  console.log('🌱 Inyectando pasajeros de WeShuttle...')
-  for (const pass of francoPassengers) {
+  // 4. Creación/Upsert de Pasajeros de WeShuttle
+  console.log('🌱 Creando pasajeros de WeShuttle...')
+  for (const pass of passengers) {
+    let role = 'rider'
+    if (pass.clerk_user_id === 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0') {
+      role = 'driver' // Juan Lopez
+    } else if (pass.clerk_user_id === 'user_3EZBdD7n2UefoPdzP4FS1Unf864') {
+      role = 'driver' // Juliana Pag
+    } else if (pass.clerk_user_id === 'user_3EYGNPDkh6Nqg38YBdCb0TeAdNi') {
+      role = 'admin'  // Franco Gulino
+    }
+
+    // Usamos upsert por si ya existía en la lista de conductores
     await prisma.user.upsert({
       where: { id: pass.clerk_user_id },
-      update: { name: pass.full_name },
+      update: { name: pass.full_name, role: role as any },
       create: {
         id: pass.clerk_user_id,
         name: pass.full_name,
-        role: pass.role as any,
-      },
+        role: role as any,
+      }
     })
   }
+  console.log(`👤 Pasajeros mapeados y creados.`)
 
   // --- MANTENER PARTE DEL SEED ORIGINAL DE PRUEBA LOCAL ---
   console.log('🌱 Inyectando datos de prueba locales originales...')
@@ -357,112 +346,67 @@ async function main() {
     })
   }
 
-  // --- INTEGRACIÓN DEL SEED CON PATRONES DE NEGOCIO Y VIAJES DE RIDER (Franco) ---
-  console.log('🌱 Integrando 500 reservas y generando sus reseñas correspondientes...');
-  
-  const today = new Date()
-  const passengerAssignments: { clerk_user_id: string; status: string; payment: string }[] = []
+  // 5. Creación de los Pools Únicos y Mapeo de Reservas
+  const confirmedReservations = reservations.filter(
+    (r: any) => r.pool_id && r.reservation_status === 'CONFIRMED'
+  )
 
-  // 1. Asignaciones Exitosas (360 en total)
-  for (let i = 0; i < 110; i++) passengerAssignments.push({ clerk_user_id: "user_3EYGNPDkh6Nqg38YBdCb0TeAdNi", status: "CONFIRMED", payment: "PAID" })
-  for (let i = 0; i < 100; i++) passengerAssignments.push({ clerk_user_id: "user_3Db8E5HISehCv1nAJkIwlHXxtiG", status: "CONFIRMED", payment: "PAID" })
-  for (let i = 0; i < 60; i++) passengerAssignments.push({ clerk_user_id: "user_3FQc2n3EzY9IuARMfRHIV6zL6LI", status: "CONFIRMED", payment: "PAID" })
-
-  for (let i = 0; i < 35; i++) passengerAssignments.push({ clerk_user_id: "user_3EYQtdZpi4fPlmXGq4EKEa1onL0", status: "CONFIRMED", payment: "PAID" })
-  for (let i = 0; i < 20; i++) passengerAssignments.push({ clerk_user_id: "user_3EZBdD7n2UefoPdzP4FS1Unf864", status: "CONFIRMED", payment: "PAID" })
-  for (let i = 0; i < 20; i++) passengerAssignments.push({ clerk_user_id: "user_3Dwjs2tNYWJq2r3WfN06m9gm533", status: "CONFIRMED", payment: "PAID" })
-  for (let i = 0; i < 15; i++) passengerAssignments.push({ clerk_user_id: "user_3EYGQCDMhqZaMRhMIgYvm46DK1P", status: "CONFIRMED", payment: "PAID" })
-
-  // 2. Asignaciones Canceladas (140 en total) - No generan reseñas reales
-  for (let i = 0; i < 45; i++) passengerAssignments.push({ clerk_user_id: "user_3EYGQCDMhqZaMRhMIgYvm46DK1P", status: "CANCELED", payment: "PAID" })
-  for (let i = 0; i < 38; i++) passengerAssignments.push({ clerk_user_id: "user_3EZBdD7n2UefoPdzP4FS1Unf864", status: "CANCELED", payment: "PAID" })
-  for (let i = 0; i < 32; i++) passengerAssignments.push({ clerk_user_id: "user_3Dwjs2tNYWJq2r3WfN06m9gm533", status: "CANCELED", payment: "PAID" })
-  for (let i = 0; i < 15; i++) passengerAssignments.push({ clerk_user_id: "user_3EYQtdZpi4fPlmXGq4EKEa1onL0", status: "CANCELED", payment: "PAID" })
-  for (let i = 0; i < 10; i++) passengerAssignments.push({ clerk_user_id: "user_3FQc2n3EzY9IuARMfRHIV6zL6LI", status: "CANCELED", payment: "PAID" })
-
-  const datesByDayOfWeek: Record<number, Date[]> = {
-    0: [], // Domingo
-    1: [], // Lunes
-    2: [], // Martes
-    3: [], // Miércoles
-    4: [], // Jueves
-    5: [], // Viernes
-    6: []  // Sábado
+  const reservationsByPool: Record<string, any[]> = {}
+  for (const r of confirmedReservations) {
+    if (!reservationsByPool[r.pool_id]) {
+      reservationsByPool[r.pool_id] = []
+    }
+    reservationsByPool[r.pool_id].push(r)
   }
 
-  for (let i = -14; i <= -1; i++) {
-    const d = new Date()
-    d.setDate(today.getDate() + i)
-    const dayOfWeek = d.getDay()
-    datesByDayOfWeek[dayOfWeek].push(d)
-  }
+  const poolIds = Object.keys(reservationsByPool)
+  console.log(`🚌 Procesando ${poolIds.length} pools confirmados para asignar conductores...`)
 
-  const targetDays: number[] = []
-  for (let i = 0; i < 30; i++) targetDays.push(0)  // Domingo (30)
-  for (let i = 0; i < 100; i++) targetDays.push(1) // Lunes (100)
-  for (let i = 0; i < 50; i++) targetDays.push(2)  // Martes (50)
-  for (let i = 0; i < 80; i++) targetDays.push(3)  // Miércoles (80)
-  for (let i = 0; i < 30; i++) targetDays.push(4)  // Jueves (30)
-  for (let i = 0; i < 120; i++) targetDays.push(5) // Viernes (120)
-  for (let i = 0; i < 90; i++) targetDays.push(6)  // Sábado (90)
-
-  // Mezclar de forma reproducible usando el hash simple de los IDs para consistencia
-  const shuffledAssignments = [...passengerAssignments].sort((a, b) => {
-    const hashA = (a.clerk_user_id + a.status).length % 7
-    const hashB = (b.clerk_user_id + b.status).length % 7
-    return hashA - hashB
-  })
-
-  let horaPicoCount = 0
-  const pools = [
-    'pool_lunes_1', 'pool_lunes_2', 'pool_viernes_1', 'pool_viernes_2',
-    'pool_sabado_1', 'pool_sabado_2', 'pool_domingo_1', 'pool_domingo_2'
+  // Choferes y vehículos activos para la distribución (Exactamente igual que el Driver App)
+  const juanDriver = { driver_id: 'drv_juan_05' }
+  const eligibleOtherDrivers = [
+    { driver_id: 'drv_juliana_01' },
+    { driver_id: 'drv_carlos_02' },
+    { driver_id: 'drv_pedro_03' },
+    { driver_id: 'drv_john_04' },
+    { driver_id: 'drv_juliana_pag' },
+    { driver_id: 'drv_nicolas_gonzalez' }
   ]
 
+  for (let i = 0; i < 13; i++) {
+    const num = i + 6
+    eligibleOtherDrivers.push({ driver_id: `drv_gen_${num.toString().padStart(2, '0')}` })
+  }
+
+  const poolDriverMap = new Map<string, string>() // pool_id -> driver clerk ID
+  let juanPoolsCount = 0
+
+  for (let idx = 0; idx < poolIds.length; idx++) {
+    const poolId = poolIds[idx]
+    let assignedDriverId
+    if (idx % 10 === 0 && juanPoolsCount < 30) {
+      assignedDriverId = juanDriver.driver_id
+      juanPoolsCount++
+    } else {
+      const otherIdx = (idx - juanPoolsCount) % eligibleOtherDrivers.length
+      assignedDriverId = eligibleOtherDrivers[otherIdx].driver_id
+    }
+    
+    const details = driverMapping[assignedDriverId]
+    poolDriverMap.set(poolId, details ? details.clerk : 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0')
+  }
+
+  // 6. Generación de reseñas consistentes para las 500 reservas
+  console.log('🌱 Integrando 500 reservas del manifiesto y generando sus reseñas en Feedback App...')
   const reviewsToCreate: any[] = []
 
-  for (let index = 0; index < 500; index++) {
-    const assignment = shuffledAssignments[index]
-
-    // Solo creamos reseñas para viajes exitosos confirmados
-    if (assignment.status !== "CONFIRMED") {
-      continue
-    }
-
-    const assignedDay = targetDays[index]
-    const datesList = datesByDayOfWeek[assignedDay]
-    const dateObj = datesList[index % datesList.length]
-
-    const reservationDate = new Date(dateObj)
-
-    const limitDate = new Date()
-    limitDate.setDate(today.getDate() + 6)
-    const isLastDay = reservationDate.toDateString() === limitDate.toDateString()
-
-    let horaLocal
-    if (horaPicoCount < 130 && (assignedDay === 1 || assignedDay === 5 || assignedDay === 6) && !isLastDay) {
-      horaLocal = 21 // 21:00 hs (hora pico)
-      horaPicoCount++
-    } else {
-      const options = [8, 12, 17]
-      horaLocal = options[index % options.length]
-    }
-
-    const year = reservationDate.getFullYear()
-    const month = reservationDate.getMonth()
-    const day = reservationDate.getDate()
-
-    let departureTimeUTC: Date
-    if (horaLocal === 21) {
-      departureTimeUTC = new Date(Date.UTC(year, month, day + 1, 0, 0, 0))
-    } else {
-      departureTimeUTC = new Date(Date.UTC(year, month, day, horaLocal + 3, 0, 0))
-    }
-
-    const poolId = pools[index % pools.length]
-    const driverId = poolDriverMap[poolId] || 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
-    const passengerId = assignment.clerk_user_id
-    const reservationId = `res_seed_${index + 1}`
+  for (let index = 0; index < confirmedReservations.length; index++) {
+    const r = confirmedReservations[index]
+    const poolId = r.pool_id
+    const passengerId = r.passenger_user_id
+    const driverId = poolDriverMap.get(poolId) || 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
+    const reservationId = r.id
+    const departureTimeUTC = new Date(r.departure_time)
 
     // 80% de reseñas completadas de forma determinística
     const isCompleted = (index % 5 !== 0)
@@ -473,7 +417,7 @@ async function main() {
 
       // Reseña del Rider al Conductor
       reviewsToCreate.push({
-        id: `seed_review_res_seed_${index + 1}_r2d`,
+        id: `seed_review_${reservationId}_r2d`,
         pool_id: poolId,
         reservation_id: reservationId,
         author_user_id: passengerId,
@@ -489,7 +433,7 @@ async function main() {
 
       // Reseña del Conductor al Rider
       reviewsToCreate.push({
-        id: `seed_review_res_seed_${index + 1}_d2r`,
+        id: `seed_review_${reservationId}_d2r`,
         pool_id: poolId,
         reservation_id: reservationId,
         author_user_id: driverId,
@@ -503,9 +447,9 @@ async function main() {
         completed_at: departureTimeUTC,
       })
     } else {
-      // Reseñas pendientes para simular el ciclo de vida real de WeShuttle
+      // Reseñas pendientes
       reviewsToCreate.push({
-        id: `seed_review_res_seed_${index + 1}_r2d_pending`,
+        id: `seed_review_${reservationId}_r2d_pending`,
         pool_id: poolId,
         reservation_id: reservationId,
         author_user_id: passengerId,
@@ -517,7 +461,7 @@ async function main() {
       })
 
       reviewsToCreate.push({
-        id: `seed_review_res_seed_${index + 1}_d2r_pending`,
+        id: `seed_review_${reservationId}_d2r_pending`,
         pool_id: poolId,
         reservation_id: reservationId,
         author_user_id: driverId,
@@ -579,7 +523,7 @@ async function main() {
     })
   }
 
-  console.log('Seeding completado con éxito y consistencia de datos garantizada.')
+  console.log('🎉 Seeding completado con éxito y consistencia de datos garantizada con el manifiesto.')
 }
 
 main()
