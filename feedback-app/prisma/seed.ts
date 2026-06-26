@@ -7,6 +7,18 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Helper para remapear los Clerk User IDs de la base de datos de WeShuttle
+// para que coincidan con la traducción de ID que hace la aplicación en login (current-user.ts)
+function mapClerkUserId(id: string): string {
+  if (id === "user_3Db8E5HISehCv1nAJkIwlHXxtiG") {
+    return "user_3EYGQCDMhqZaMRhMIgYvm46DK1P"
+  }
+  if (id === "user_3EYQtdZpi4fPlmXGq4EKEa1onL0") {
+    return "user_3EYGtdZpi4fPlmXGq4EKEa1onL0"
+  }
+  return id
+}
+
 // 1. Mapeo completo de Conductores (ID interno en Driver App -> Clerk ID y Nombre)
 const driverMapping: Record<string, { clerk: string; name: string }> = {
   'drv_juliana_01': { clerk: 'user_3EZoK6pR0SB0EYHvCh3rpEcbNWT', name: 'Juliana Pagani' },
@@ -94,7 +106,7 @@ function getRiderToDriverRatingAndComment(driverId: string, index: number) {
 
   const rIdx = index % 10
   // Mapeamos el clerk ID para decidir el tono de la reseña
-  if (driverId === 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0') {
+  if (driverId === 'user_3EYGtdZpi4fPlmXGq4EKEa1onL0') {
     return { rating: excellentRatings[rIdx], comment: excellentComments[rIdx] }
   } else if (driverId === 'user_3EZBdD7n2UefoPdzP4FS1Unf864') {
     return { rating: goodRatings[rIdx], comment: goodComments[rIdx] }
@@ -150,9 +162,9 @@ function getDriverToRiderRatingAndComment(passengerId: string, index: number) {
   ]
 
   const rIdx = index % 10
-  if (passengerId === 'user_3EYGNPDkh6Nqg38YBdCb0TeAdNi' || passengerId === 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0') {
+  if (passengerId === 'user_3EYGNPDkh6Nqg38YBdCb0TeAdNi' || passengerId === 'user_3EYGtdZpi4fPlmXGq4EKEa1onL0') {
     return { rating: excellentRatings[rIdx], comment: excellentComments[rIdx] }
-  } else if (passengerId === 'user_3Db8E5HISehCv1nAJkIwlHXxtiG' || passengerId === 'user_3FQc2n3EzY9IuARMfRHIV6zL6LI') {
+  } else if (passengerId === 'user_3Db8E5HISehCv1nAJkIwlHXxtiG' || passengerId === 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P' || passengerId === 'user_3FQc2n3EzY9IuARMfRHIV6zL6LI') {
     return { rating: goodRatings[rIdx], comment: goodComments[rIdx] }
   } else {
     // Pasajeros de comportamiento crítico (Juan, Juan Perez, Santiago Lopez)
@@ -188,9 +200,12 @@ async function main() {
   console.log('🌱 Creando conductores...')
   for (const driverId of Object.keys(driverMapping)) {
     const details = driverMapping[driverId]
-    await prisma.user.create({
-      data: {
-        id: details.clerk,
+    const clerkId = mapClerkUserId(details.clerk)
+    await prisma.user.upsert({
+      where: { id: clerkId },
+      update: { name: details.name, role: 'driver' },
+      create: {
+        id: clerkId,
         name: details.name,
         role: 'driver',
       }
@@ -201,21 +216,22 @@ async function main() {
   // 4. Creación/Upsert de Pasajeros de WeShuttle
   console.log('🌱 Creando pasajeros de WeShuttle...')
   for (const pass of passengers) {
+    const clerkId = mapClerkUserId(pass.clerk_user_id)
     let role = 'rider'
-    if (pass.clerk_user_id === 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0') {
+    if (clerkId === 'user_3EYGtdZpi4fPlmXGq4EKEa1onL0') {
       role = 'driver' // Juan Lopez
-    } else if (pass.clerk_user_id === 'user_3EZBdD7n2UefoPdzP4FS1Unf864') {
+    } else if (clerkId === 'user_3EZBdD7n2UefoPdzP4FS1Unf864') {
       role = 'driver' // Juliana Pag
-    } else if (pass.clerk_user_id === 'user_3EYGNPDkh6Nqg38YBdCb0TeAdNi') {
+    } else if (clerkId === 'user_3EYGNPDkh6Nqg38YBdCb0TeAdNi') {
       role = 'admin'  // Franco Gulino
     }
 
     // Usamos upsert por si ya existía en la lista de conductores
     await prisma.user.upsert({
-      where: { id: pass.clerk_user_id },
+      where: { id: clerkId },
       update: { name: pass.full_name, role: role as any },
       create: {
-        id: pass.clerk_user_id,
+        id: clerkId,
         name: pass.full_name,
         role: role as any,
       }
@@ -228,7 +244,7 @@ async function main() {
   const now = new Date()
   const seedPoolId = 'pool_seed_trip_001'
   const seedPoolId2 = 'pool_seed_trip_002'
-  const targetDriverId = 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
+  const targetDriverId = mapClerkUserId('user_3EYQtdZpi4fPlmXGq4EKEa1onL0')
 
   const originalPassengers = [
     { id: 'seed_user_shai_gilgeous-alexander', name: 'Shai Gilgeous-Alexander' },
@@ -393,7 +409,7 @@ async function main() {
     }
     
     const details = driverMapping[assignedDriverId]
-    poolDriverMap.set(poolId, details ? details.clerk : 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0')
+    poolDriverMap.set(poolId, details ? mapClerkUserId(details.clerk) : mapClerkUserId('user_3EYQtdZpi4fPlmXGq4EKEa1onL0'))
   }
 
   // 6. Generación de reseñas consistentes para las 500 reservas
@@ -403,8 +419,8 @@ async function main() {
   for (let index = 0; index < confirmedReservations.length; index++) {
     const r = confirmedReservations[index]
     const poolId = r.pool_id
-    const passengerId = r.passenger_user_id
-    const driverId = poolDriverMap.get(poolId) || 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0'
+    const passengerId = mapClerkUserId(r.passenger_user_id)
+    const driverId = poolDriverMap.get(poolId) || mapClerkUserId('user_3EYQtdZpi4fPlmXGq4EKEa1onL0')
     const reservationId = r.id
     const departureTimeUTC = new Date(r.departure_time)
 
