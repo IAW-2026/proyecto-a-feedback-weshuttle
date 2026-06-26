@@ -260,6 +260,13 @@ export default function DriverTripsList({ initialReviews }: Props) {
   const currentPage = Math.min(Math.max(Number(pageParam) || 1, 1), totalPages)
   const paginatedTrips = filteredTrips.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
+  // Ventana deslizante de 5 botones centrada en la página actual
+  const half = Math.floor(5 / 2)
+  let winStart = Math.max(1, currentPage - half)
+  let winEnd = winStart + 4
+  if (winEnd > totalPages) { winEnd = totalPages; winStart = Math.max(1, winEnd - 4) }
+  const pageWindow = Array.from({ length: winEnd - winStart + 1 }, (_, i) => winStart + i)
+
   const handleExportTripReviews = (trip: TripGroup) => {
     const headers = [
       "ID Reseña",
@@ -372,7 +379,7 @@ export default function DriverTripsList({ initialReviews }: Props) {
             </button>
 
             <div className="flex items-center gap-2">
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              {pageWindow.map((page) => (
                 <button
                   key={page}
                   type="button"

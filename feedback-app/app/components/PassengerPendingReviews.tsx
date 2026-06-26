@@ -43,6 +43,16 @@ export default function PassengerPendingReviews({ reviews, poolDetails }: Props)
   const totalPages = Math.max(1, Math.ceil(sortedReviews.length / pageSize))
   const activePage = Math.min(currentPage, totalPages)
   
+  // Sliding window of 5 buttons centered around activePage
+  const half = Math.floor(5 / 2)
+  let winStart = Math.max(1, activePage - half)
+  let winEnd = winStart + 4
+  if (winEnd > totalPages) {
+    winEnd = totalPages
+    winStart = Math.max(1, winEnd - 4)
+  }
+  const pageWindow = Array.from({ length: winEnd - winStart + 1 }, (_, i) => winStart + i)
+
   const visibleReviews = useMemo(() => {
     const start = (activePage - 1) * pageSize
     return sortedReviews.slice(start, start + pageSize)
@@ -76,7 +86,7 @@ export default function PassengerPendingReviews({ reviews, poolDetails }: Props)
             </button>
 
             <div className="flex items-center gap-2">
-              {Array.from({ length: totalPages }, (_, page) => page + 1).map((page) => (
+              {pageWindow.map((page) => (
                 <button
                   key={page}
                   type="button"

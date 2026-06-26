@@ -412,8 +412,8 @@ async function main() {
     poolDriverMap.set(poolId, details ? mapClerkUserId(details.clerk) : mapClerkUserId('user_3EYQtdZpi4fPlmXGq4EKEa1onL0'))
   }
 
-  // 6. Generación de reseñas consistentes para las 500 reservas
-  console.log('🌱 Integrando 500 reservas del manifiesto y generando sus reseñas en Feedback App...')
+  // 6. Generación de reseñas consistentes para las reservas
+  console.log(`🌱 Integrando ${confirmedReservations.length} reservas del manifiesto y generando sus reseñas en Feedback App...`)
   const reviewsToCreate: any[] = []
 
   for (let index = 0; index < confirmedReservations.length; index++) {

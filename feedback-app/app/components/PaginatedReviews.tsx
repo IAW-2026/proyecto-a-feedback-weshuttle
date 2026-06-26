@@ -30,10 +30,24 @@ export default function PaginatedReviews({ reviews, currentUserRole, hideReportB
     const start = (currentPage - 1) * pageSize
     return reviews.slice(start, start + pageSize)
   }, [currentPage, reviews])
-// constante que define la función goToPage, que se encarga de actualizar 
-// el estado currentPage para navegar entre las páginas de reseñas.
+
+  // constante que define la función goToPage, que se encarga de actualizar 
+  // el estado currentPage para navegar entre las páginas de reseñas.
   const goToPage = (page: number) => {
     setCurrentPage(Math.min(Math.max(page, 1), totalPages))
+  }
+
+  // Ventana deslizante de 5 botones centrada en la página actual
+  const getPageWindow = () => {
+    const windowSize = 5
+    const half = Math.floor(windowSize / 2)
+    let start = Math.max(1, currentPage - half)
+    let end = start + windowSize - 1
+    if (end > totalPages) {
+      end = totalPages
+      start = Math.max(1, end - windowSize + 1)
+    }
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i)
   }
 
   if (reviews.length === 0) {
@@ -62,7 +76,7 @@ export default function PaginatedReviews({ reviews, currentUserRole, hideReportB
             </button>
 
             <div className="flex items-center gap-2">
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              {getPageWindow().map((page) => (
                 <button
                   key={page}
                   type="button"

@@ -53,6 +53,16 @@ export default function DriverPendingTripsAccordion({ trips }: Props) {
 				const start = (currentPage - 1) * pageSize
 				const visibleReviews = trip.reviews.slice(start, start + pageSize)
 
+				// Sliding window of 5 buttons centered around currentPage
+				const half = Math.floor(5 / 2)
+				let winStart = Math.max(1, currentPage - half)
+				let winEnd = winStart + 4
+				if (winEnd > totalPages) {
+					winEnd = totalPages
+					winStart = Math.max(1, winEnd - 4)
+				}
+				const pageWindow = Array.from({ length: winEnd - winStart + 1 }, (_, i) => winStart + i)
+
 				return (
 					<article key={trip.poolId} className="ws-card overflow-hidden">
 						<button
@@ -121,7 +131,7 @@ export default function DriverPendingTripsAccordion({ trips }: Props) {
 											</button>
 
 											<div className="flex items-center gap-2">
-												{Array.from({ length: totalPages }, (_, page) => page + 1).map((page) => (
+												{pageWindow.map((page) => (
 													<button
 														key={page}
 														type="button"
