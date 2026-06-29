@@ -13,9 +13,6 @@ function mapClerkUserId(id: string): string {
   if (id === "user_3Db8E5HISehCv1nAJkIwlHXxtiG") {
     return "user_3EYGQCDMhqZaMRhMIgYvm46DK1P"
   }
-  if (id === "user_3EYQtdZpi4fPlmXGq4EKEa1onL0") {
-    return "user_3EYGtdZpi4fPlmXGq4EKEa1onL0"
-  }
   return id
 }
 
@@ -106,7 +103,7 @@ function getRiderToDriverRatingAndComment(driverId: string, index: number) {
 
   const rIdx = index % 10
   // Mapeamos el clerk ID para decidir el tono de la reseña
-  if (driverId === 'user_3EYGtdZpi4fPlmXGq4EKEa1onL0') {
+  if (driverId === 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0') {
     return { rating: excellentRatings[rIdx], comment: excellentComments[rIdx] }
   } else if (driverId === 'user_3EZBdD7n2UefoPdzP4FS1Unf864') {
     return { rating: goodRatings[rIdx], comment: goodComments[rIdx] }
@@ -162,7 +159,7 @@ function getDriverToRiderRatingAndComment(passengerId: string, index: number) {
   ]
 
   const rIdx = index % 10
-  if (passengerId === 'user_3EYGNPDkh6Nqg38YBdCb0TeAdNi' || passengerId === 'user_3EYGtdZpi4fPlmXGq4EKEa1onL0') {
+  if (passengerId === 'user_3EYGNPDkh6Nqg38YBdCb0TeAdNi' || passengerId === 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0') {
     return { rating: excellentRatings[rIdx], comment: excellentComments[rIdx] }
   } else if (passengerId === 'user_3Db8E5HISehCv1nAJkIwlHXxtiG' || passengerId === 'user_3EYGQCDMhqZaMRhMIgYvm46DK1P' || passengerId === 'user_3FQc2n3EzY9IuARMfRHIV6zL6LI') {
     return { rating: goodRatings[rIdx], comment: goodComments[rIdx] }
@@ -218,7 +215,7 @@ async function main() {
   for (const pass of passengers) {
     const clerkId = mapClerkUserId(pass.clerk_user_id)
     let role = 'rider'
-    if (clerkId === 'user_3EYGtdZpi4fPlmXGq4EKEa1onL0') {
+    if (clerkId === 'user_3EYQtdZpi4fPlmXGq4EKEa1onL0') {
       role = 'driver' // Juan Lopez
     } else if (clerkId === 'user_3EZBdD7n2UefoPdzP4FS1Unf864') {
       role = 'driver' // Juliana Pag
@@ -407,7 +404,7 @@ async function main() {
       const otherIdx = (idx - juanPoolsCount) % eligibleOtherDrivers.length
       assignedDriverId = eligibleOtherDrivers[otherIdx].driver_id
     }
-    
+
     const details = driverMapping[assignedDriverId]
     poolDriverMap.set(poolId, details ? mapClerkUserId(details.clerk) : mapClerkUserId('user_3EYQtdZpi4fPlmXGq4EKEa1onL0'))
   }
