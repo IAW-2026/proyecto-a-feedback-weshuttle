@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String   @id
+  name            String?
+  role            Role     @default(rider)
+  createdAt       DateTime @default(now())
+  reviewsSent     Review[] @relation("ReviewsSent")
+  reviewsReceived Review[] @relation("ReviewsReceived")
+}
+
+model Review {
+  id             String       @id @default(cuid())
+  pool_id        String
+  reservation_id String?
+  author_user_id String
+  author_role    Role
+  target_user_id String
+  target_role    Role
+  rating         Int?
+  comment        String?
+  status         ReviewStatus @default(PRECREATED)
+  enabled_at     DateTime?
+  completed_at   DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  reports        Report[]
+  author         User         @relation("ReviewsSent", fields: [author_user_id], references: [id])
+  recipient      User         @relation("ReviewsReceived", fields: [target_user_id], references: [id])
+}
+
+model RatingAverage {
+  id             String   @id @default(cuid())
+  user_id        String
+  role           Role
+  average_rating Float?
+  total_reviews  Int      @default(0)
+  updated_at     DateTime @updatedAt
+
+  @@unique([user_id, role])
+}
+
+model Report {
+  id               String       @id @default(cuid())
+  review_id        String
+  reporter_user_id String
+  reporter_role    Role
+  type             ReportType
+  description      String?
+  status           ReportStatus @default(PENDING)
+  reviewed_at      DateTime?
+  createdAt        DateTime     @default(now())
+  review           Review       @relation(fields: [review_id], references: [id], onDelete: Cascade)
+}
+
+enum ReportType {
+  SPAM
+  CONTENIDO_OFENSIVO
+  INFORMACION_FALSA
+  DATOS_PERSONALES
+  OTROS
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESUELTO
+  RECHAZADO
+}
+
+enum ReviewStatus {
+  PRECREATED
+  PENDING
+  COMPLETED
+  REMOVED
+}
+
+enum Role {
+  rider
+  driver
+  admin
+}
